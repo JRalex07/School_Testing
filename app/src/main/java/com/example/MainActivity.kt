@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,7 +30,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
   object Students : Screen("students", "Students", Icons.Default.People)
   object CollectFee : Screen("collect_fee", "Collect Fee", Icons.Default.Payments)
   object Pending : Screen("pending", "Pending", Icons.Default.HourglassBottom)
-  object Payments : Screen("payments", "Payments", Icons.Default.ReceiptLong)
+  object Payments : Screen("payments", "Payments", Icons.AutoMirrored.Filled.ReceiptLong)
   object Reports : Screen("reports", "Reports", Icons.Default.BarChart)
   object Settings : Screen("settings", "Settings", Icons.Default.Settings)
   data class StudentDetail(val studentId: String) : Screen("student_detail", "Student Profile", Icons.Default.Person)

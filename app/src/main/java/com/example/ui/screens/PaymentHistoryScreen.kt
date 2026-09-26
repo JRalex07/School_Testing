@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -176,7 +177,7 @@ fun PaymentHistoryScreen(
         ) {
           Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-              Icons.Default.ReceiptLong,
+              Icons.AutoMirrored.Filled.ReceiptLong,
               contentDescription = null,
               modifier = Modifier.size(54.dp),
               tint = MaterialTheme.colorScheme.onSurfaceVariant
