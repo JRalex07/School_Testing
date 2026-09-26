@@ -1,10 +1,12 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,6 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,15 +77,15 @@ fun PendingFeesScreen(
       TopAppBar(
         title = {
           Column {
-            Text("Pending & Overdue Fees", fontWeight = FontWeight.Bold)
+            Text("Pending & Overdue Fees", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextInkPrimary)
             Text(
               "${filteredRecords.size} outstanding entries",
               style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
+              color = TextSecondaryMuted
             )
           }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = CardSurfaceWhite)
       )
     }
   ) { innerPadding ->
@@ -95,33 +99,35 @@ fun PendingFeesScreen(
       Card(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(16.dp, 8.dp, 16.dp, 8.dp),
+          .padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
-        shape = RoundedCornerShape(14.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderWarmGray),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, BorderWarmGray),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
       ) {
         Row(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(14.dp),
+            .padding(16.dp),
           horizontalArrangement = Arrangement.SpaceBetween
         ) {
           Column {
-            Text("Total Outstanding", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Total Outstanding", fontSize = 11.sp, color = TextSecondaryMuted, fontWeight = FontWeight.SemiBold)
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
               text = FormatUtils.formatCurrency(totalPendingAmount, profile.currencySymbol),
               fontWeight = FontWeight.Bold,
-              fontSize = 18.sp,
+              fontSize = 20.sp,
               color = StatusDue
             )
           }
           Column(horizontalAlignment = Alignment.End) {
-            Text("Critical Overdue", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Critical Overdue", fontSize = 11.sp, color = TextSecondaryMuted, fontWeight = FontWeight.SemiBold)
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
               text = FormatUtils.formatCurrency(overduePendingAmount, profile.currencySymbol),
               fontWeight = FontWeight.Bold,
-              fontSize = 18.sp,
+              fontSize = 20.sp,
               color = StatusOverdue
             )
           }
@@ -133,22 +139,24 @@ fun PendingFeesScreen(
         value = searchQuery,
         onValueChange = { searchQuery = it },
         placeholder = { Text("Search by student name or period...") },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondaryMuted) },
         trailingIcon = {
           if (searchQuery.isNotBlank()) {
             IconButton(onClick = { searchQuery = "" }) {
-              Icon(Icons.Default.Close, contentDescription = "Clear")
+              Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSecondaryMuted)
             }
           }
         },
         singleLine = true,
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(14.dp),
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = 16.dp, vertical = 4.dp),
         colors = OutlinedTextFieldDefaults.colors(
-          unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-          focusedContainerColor = MaterialTheme.colorScheme.surface
+          unfocusedContainerColor = CardSurfaceWhite,
+          focusedContainerColor = CardSurfaceWhite,
+          unfocusedBorderColor = BorderWarmGray,
+          focusedBorderColor = DeepTealPrimary
         )
       )
 
@@ -162,7 +170,8 @@ fun PendingFeesScreen(
           FilterChip(
             selected = filterOnlyOverdue,
             onClick = { filterOnlyOverdue = !filterOnlyOverdue },
-            label = { Text("Only Overdue") },
+            label = { Text("Only Overdue", fontSize = 12.sp) },
+            shape = RoundedCornerShape(50),
             leadingIcon = if (filterOnlyOverdue) {
               { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
             } else null
@@ -172,7 +181,8 @@ fun PendingFeesScreen(
           FilterChip(
             selected = filterOnlyPartial,
             onClick = { filterOnlyPartial = !filterOnlyPartial },
-            label = { Text("Partially Paid") },
+            label = { Text("Partially Paid", fontSize = 12.sp) },
+            shape = RoundedCornerShape(50),
             leadingIcon = if (filterOnlyPartial) {
               { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
             } else null
@@ -182,7 +192,8 @@ fun PendingFeesScreen(
           FilterChip(
             selected = !sortByOldest,
             onClick = { sortByOldest = !sortByOldest },
-            label = { Text(if (sortByOldest) "Sort: Oldest First" else "Sort: Highest Due") }
+            label = { Text(if (sortByOldest) "Sort: Oldest First" else "Sort: Highest Due", fontSize = 12.sp) },
+            shape = RoundedCornerShape(50)
           )
         }
       }
@@ -196,17 +207,25 @@ fun PendingFeesScreen(
           contentAlignment = Alignment.Center
         ) {
           Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-              Icons.Default.CheckCircleOutline,
-              contentDescription = null,
-              tint = StatusPaid,
-              modifier = Modifier.size(60.dp)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("All Caught Up!", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Box(
+              modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(StatusPaidContainer),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = StatusPaid,
+                modifier = Modifier.size(36.dp)
+              )
+            }
+            Spacer(modifier = Modifier.height(14.dp))
+            Text("All Caught Up!", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextInkPrimary)
             Text(
               "No pending tuition fees found matching your criteria.",
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              color = TextSecondaryMuted,
               fontSize = 13.sp
             )
           }
@@ -214,7 +233,7 @@ fun PendingFeesScreen(
       } else {
         LazyColumn(
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+          contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
           verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
           items(filteredRecords, key = { it.id }) { rec ->
@@ -223,12 +242,12 @@ fun PendingFeesScreen(
 
             Card(
               modifier = Modifier.fillMaxWidth(),
-              shape = RoundedCornerShape(14.dp),
+              shape = RoundedCornerShape(18.dp),
               colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
-              border = androidx.compose.foundation.BorderStroke(1.dp, BorderWarmGray),
-              elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+              border = BorderStroke(1.dp, BorderWarmGray),
+              elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
-              Column(modifier = Modifier.padding(14.dp)) {
+              Column(modifier = Modifier.padding(16.dp)) {
                 Row(
                   modifier = Modifier.fillMaxWidth(),
                   horizontalArrangement = Arrangement.SpaceBetween,
@@ -239,18 +258,19 @@ fun PendingFeesScreen(
                       text = rec.studentName,
                       fontWeight = FontWeight.Bold,
                       fontSize = 15.sp,
-                      color = MaterialTheme.colorScheme.onSurface
+                      color = TextInkPrimary
                     )
                     Text(
                       text = "${DateUtils.formatDisplayPeriod(rec.feePeriod)} • Due: ${DateUtils.formatDisplayDate(rec.dueDate)}",
                       fontSize = 12.sp,
-                      color = if (isOverdue) StatusOverdue else MaterialTheme.colorScheme.onSurfaceVariant
+                      color = if (isOverdue) StatusOverdue else TextSecondaryMuted,
+                      fontWeight = if (isOverdue) FontWeight.SemiBold else FontWeight.Normal
                     )
                     if (studentObj != null) {
                       Text(
-                        text = "${studentObj.studentClass} • Parent: ${studentObj.parentPhone}",
+                        text = "${studentObj.studentClass} • Contact: ${studentObj.parentContact.ifBlank { studentObj.phoneNumber }}",
                         fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = TextSecondaryMuted
                       )
                     }
                   }
@@ -259,7 +279,7 @@ fun PendingFeesScreen(
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
-                HorizontalDivider()
+                HorizontalDivider(color = BorderWarmGray.copy(alpha = 0.6f))
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
@@ -276,31 +296,33 @@ fun PendingFeesScreen(
                     )
                     if (rec.paidAmount > 0) {
                       Text(
-                        text = "Already Paid: ${FormatUtils.formatCurrency(rec.paidAmount, profile.currencySymbol)} of ${FormatUtils.formatCurrency(rec.netFee, profile.currencySymbol)}",
+                        text = "Paid: ${FormatUtils.formatCurrency(rec.paidAmount, profile.currencySymbol)} of ${FormatUtils.formatCurrency(rec.netFee, profile.currencySymbol)}",
                         fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = TextSecondaryMuted
                       )
                     }
                   }
 
-                  Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                  Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
                       onClick = { onNavigateToStudentDetail(rec.studentId) },
-                      shape = RoundedCornerShape(8.dp),
-                      contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                      shape = RoundedCornerShape(10.dp),
+                      colors = ButtonDefaults.outlinedButtonColors(contentColor = TextInkPrimary),
+                      border = BorderStroke(1.dp, BorderWarmGray),
+                      contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                     ) {
-                      Text("Profile", fontSize = 11.sp)
+                      Text("Profile", fontSize = 12.sp)
                     }
 
                     Button(
                       onClick = { onNavigateToCollectFee(rec.studentId) },
-                      shape = RoundedCornerShape(8.dp),
-                      colors = ButtonDefaults.buttonColors(containerColor = BrandBluePrimary),
-                      contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                      shape = RoundedCornerShape(10.dp),
+                      colors = ButtonDefaults.buttonColors(containerColor = DeepTealPrimary),
+                      contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
-                      Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(14.dp))
+                      Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(15.dp))
                       Spacer(modifier = Modifier.width(4.dp))
-                      Text("Collect Fee", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                      Text("Collect Fee", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                   }
                 }

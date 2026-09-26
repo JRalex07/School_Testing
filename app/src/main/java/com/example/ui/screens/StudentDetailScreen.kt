@@ -91,14 +91,15 @@ fun StudentDetailScreen(
             Icon(Icons.Default.Delete, contentDescription = "Delete Student", tint = MaterialTheme.colorScheme.error)
           }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = CardSurfaceWhite)
       )
     },
     floatingActionButton = {
       ExtendedFloatingActionButton(
         onClick = { onNavigateToCollectFee(student.id) },
-        containerColor = BrandBluePrimary,
-        contentColor = Color.White
+        containerColor = DeepTealPrimary,
+        contentColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
       ) {
         Icon(Icons.Default.Payments, contentDescription = null)
         Spacer(modifier = Modifier.width(8.dp))
@@ -110,16 +111,17 @@ fun StudentDetailScreen(
       modifier = Modifier
         .fillMaxSize()
         .padding(innerPadding)
-        .background(MaterialTheme.colorScheme.background),
-      contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 88.dp),
+        .background(WarmIvoryBackground),
+      contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 100.dp),
       verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
       // 1. Header Information Card
       item {
         Card(
           modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(14.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+          shape = RoundedCornerShape(18.dp),
+          colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+          border = androidx.compose.foundation.BorderStroke(1.dp, BorderWarmGray),
           elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
           Column(modifier = Modifier.padding(16.dp)) {
@@ -177,8 +179,9 @@ fun StudentDetailScreen(
         item {
           Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderWarmGray),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
           ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -186,7 +189,7 @@ fun StudentDetailScreen(
                 text = "FINANCIAL SUMMARY",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = DeepTealPrimary
               )
 
               Spacer(modifier = Modifier.height(10.dp))

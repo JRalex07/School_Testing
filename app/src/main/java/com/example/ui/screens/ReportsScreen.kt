@@ -44,8 +44,8 @@ fun ReportsScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Financial Reports & Ledger", fontWeight = FontWeight.Bold) },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+        title = { Text("Financial Reports & Ledger", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextInkPrimary) },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = CardSurfaceWhite)
       )
     }
   ) { innerPadding ->
@@ -53,7 +53,7 @@ fun ReportsScreen(
       modifier = Modifier
         .fillMaxSize()
         .padding(innerPadding)
-        .background(MaterialTheme.colorScheme.background)
+        .background(WarmIvoryBackground)
     ) {
       // Tab selector
       PrimaryTabRow(selectedTabIndex = selectedTab) {
@@ -122,7 +122,7 @@ private fun MonthlyReportTab(
 
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 80.dp),
+    contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 100.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp)
   ) {
     // Period selector chip row

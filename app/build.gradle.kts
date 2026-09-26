@@ -27,6 +27,7 @@ android {
     val releaseKeystore = file(releaseKeystorePath)
     if (releaseKeystore.exists()) {
       create("release") {
+        storeFile = releaseKeystore
         val envStorePass = System.getenv("STORE_PASSWORD")
         storePassword = if (envStorePass.isNullOrBlank()) "android123" else envStorePass
         keyAlias = "upload"

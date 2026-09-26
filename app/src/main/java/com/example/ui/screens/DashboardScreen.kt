@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,12 +12,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -70,84 +75,168 @@ fun DashboardScreen(
     modifier = Modifier
       .fillMaxSize()
       .background(WarmIvoryBackground),
-    contentPadding = PaddingValues(bottom = 96.dp)
+    contentPadding = PaddingValues(bottom = 110.dp)
   ) {
-    // 1. Calm, Human-Designed Header for Independent Tutor
+    // 1. Premium 18:8 Hero Card with Curved Bottom and Gradient
     item {
-      Surface(
-        color = CardSurfaceWhite,
-        modifier = Modifier.fillMaxWidth(),
-        border = BorderStroke(1.dp, BorderWarmGray)
+      Box(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+          .background(
+            brush = Brush.verticalGradient(
+              colors = listOf(
+                DeepTealDark,
+                DeepTealPrimary
+              )
+            )
+          )
+          .padding(top = 16.dp, bottom = 24.dp, start = 20.dp, end = 20.dp)
       ) {
-        Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+          // Top bar inside hero: Academy info + Settings Icon
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
             Column {
-              Text(
-                text = profile.tuitionName.ifBlank { "Tutor Ledger" },
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = TextInkPrimary,
-                fontSize = 20.sp
-              )
-              Spacer(modifier = Modifier.height(2.dp))
-              Text(
-                text = "${profile.teacherName.ifBlank { "Private Tutor" }} • $displayPeriod",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondaryMuted,
-                fontSize = 13.sp
-              )
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                  modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.2f)),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.School,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                  )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                  Text(
+                    text = profile.tuitionName.ifBlank { "Tutor Ledger" },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontSize = 20.sp
+                  )
+                  Text(
+                    text = "${profile.teacherName.ifBlank { "Independent Tutor" }} • $displayPeriod",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 12.sp
+                  )
+                }
+              }
             }
 
             IconButton(
               onClick = onNavigateToSettings,
               modifier = Modifier
-                .size(38.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(SurfaceMuted)
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.15f))
             ) {
               Icon(
                 Icons.Default.Settings,
                 contentDescription = "Settings",
-                tint = TextSecondaryMuted,
-                modifier = Modifier.size(18.dp)
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
               )
             }
           }
 
-          Spacer(modifier = Modifier.height(16.dp))
+          Spacer(modifier = Modifier.height(20.dp))
 
-          // Primary Actions: Deep Teal for Collect Fee and Add Student
+          // Key Headline Metric: Monthly Total Collected
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+          ) {
+            Column {
+              Text(
+                text = "COLLECTED THIS MONTH",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.8f),
+                letterSpacing = 0.6.sp
+              )
+              Spacer(modifier = Modifier.height(4.dp))
+              Text(
+                text = FormatUtils.formatCurrency(stats.collectedThisMonth, profile.currencySymbol),
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+              )
+            }
+
+            Surface(
+              shape = RoundedCornerShape(50),
+              color = Color.White.copy(alpha = 0.2f),
+              contentColor = Color.White
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(
+                  imageVector = if (collectionRate >= 80) Icons.AutoMirrored.Filled.TrendingUp else Icons.Default.Pending,
+                  contentDescription = null,
+                  modifier = Modifier.size(14.dp),
+                  tint = Color.White
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                  text = "$collectionRate% Realized",
+                  fontSize = 12.sp,
+                  fontWeight = FontWeight.Bold
+                )
+              }
+            }
+          }
+
+          Spacer(modifier = Modifier.height(18.dp))
+
+          // Primary One-Thumb Action Buttons for 18:8 ergonomics
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
           ) {
             Button(
               onClick = { onNavigateToCollectFee(null) },
-              modifier = Modifier.weight(1.3f),
-              colors = ButtonDefaults.buttonColors(containerColor = DeepTealPrimary),
-              shape = RoundedCornerShape(12.dp)
+              modifier = Modifier
+                .weight(1.3f)
+                .height(48.dp),
+              colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = DeepTealPrimary
+              ),
+              shape = RoundedCornerShape(14.dp),
+              elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
             ) {
-              Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("Collect Fee", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+              Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(18.dp))
+              Spacer(modifier = Modifier.width(8.dp))
+              Text("Collect Fee", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
 
             OutlinedButton(
               onClick = onNavigateToAddStudent,
-              modifier = Modifier.weight(1f),
-              colors = ButtonDefaults.outlinedButtonColors(contentColor = DeepTealPrimary),
-              border = BorderStroke(1.dp, DeepTealPrimary.copy(alpha = 0.5f)),
-              shape = RoundedCornerShape(12.dp)
+              modifier = Modifier
+                .weight(1f)
+                .height(48.dp),
+              colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color.White
+              ),
+              border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.6f)),
+              shape = RoundedCornerShape(14.dp)
             ) {
-              Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+              Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
               Spacer(modifier = Modifier.width(6.dp))
               Text("Add Student", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             }
@@ -156,7 +245,7 @@ fun DashboardScreen(
       }
     }
 
-    // 2. Overdue Attention Banner (Calm Brick Red indicator, not flashing/neon)
+    // 2. Overdue Warning Card (if applicable)
     if (stats.overdueAmount > 0) {
       item {
         Card(
@@ -165,33 +254,33 @@ fun DashboardScreen(
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable { onNavigateToPendingFees() },
           colors = CardDefaults.cardColors(containerColor = StatusOverdueContainer),
-          shape = RoundedCornerShape(14.dp),
+          shape = RoundedCornerShape(18.dp),
           border = BorderStroke(1.dp, StatusOverdue.copy(alpha = 0.35f)),
-          elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+          elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
         ) {
           Row(
             modifier = Modifier
               .fillMaxWidth()
-              .padding(14.dp),
+              .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
           ) {
             Row(
               verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(10.dp)
+              horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
               Box(
                 modifier = Modifier
-                  .size(32.dp)
-                  .clip(RoundedCornerShape(8.dp))
+                  .size(38.dp)
+                  .clip(CircleShape)
                   .background(StatusOverdue),
                 contentAlignment = Alignment.Center
               ) {
-                Icon(Icons.Default.Warning, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Warning, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
               }
               Column {
                 Text(
-                  text = "Overdue Fees Follow-Up",
+                  text = "Overdue Fees Attention",
                   fontWeight = FontWeight.Bold,
                   color = StatusOnOverdueContainer,
                   fontSize = 14.sp
@@ -214,15 +303,94 @@ fun DashboardScreen(
       }
     }
 
-    // 3. Actionable Receivables Queue (Clean white card, one-tap fee collection)
+    // 3. Monthly Realization Progress Bar Card
+    item {
+      Card(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp, vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, BorderWarmGray),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+      ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Column {
+              Text(
+                text = "MONTHLY REALIZATION",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = TextSecondaryMuted,
+                letterSpacing = 0.5.sp,
+                fontSize = 10.sp
+              )
+              Text(
+                text = "${FormatUtils.formatCurrency(stats.collectedThisMonth, profile.currencySymbol)} of ${FormatUtils.formatCurrency(stats.expectedFeeThisMonth, profile.currencySymbol)}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextInkPrimary
+              )
+            }
+            Surface(
+              shape = RoundedCornerShape(50),
+              color = if (collectionRate >= 80) StatusPaidContainer else StatusDueContainer,
+              contentColor = if (collectionRate >= 80) StatusOnPaidContainer else StatusOnDueContainer
+            ) {
+              Text(
+                text = "$collectionRate%",
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(12.dp))
+          LinearProgressIndicator(
+            progress = { (collectionRate / 100f).coerceIn(0f, 1f) },
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(8.dp)
+              .clip(RoundedCornerShape(4.dp)),
+            color = DeepTealPrimary,
+            trackColor = SurfaceMuted
+          )
+
+          Spacer(modifier = Modifier.height(12.dp))
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Text(
+              text = "Uncollected: ${FormatUtils.formatCurrency(stats.pendingThisMonth, profile.currencySymbol)}",
+              fontSize = 12.sp,
+              color = StatusDue,
+              fontWeight = FontWeight.SemiBold
+            )
+            Text(
+              text = "${stats.paidStudentsCount} of ${stats.activeStudents} students settled",
+              fontSize = 12.sp,
+              color = TextSecondaryMuted
+            )
+          }
+        }
+      }
+    }
+
+    // 4. Actionable Receivables Queue (If any pending this month)
     if (pendingActionStudents.isNotEmpty()) {
       item {
         Card(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
           colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
-          shape = RoundedCornerShape(14.dp),
+          shape = RoundedCornerShape(18.dp),
           border = BorderStroke(1.dp, BorderWarmGray),
           elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
@@ -257,7 +425,7 @@ fun DashboardScreen(
               )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             pendingActionStudents.forEachIndexed { index, student ->
               val rec = feeRecords.find { it.studentId == student.id && it.feePeriod == currentPeriod }
@@ -267,34 +435,64 @@ fun DashboardScreen(
               Row(
                 modifier = Modifier
                   .fillMaxWidth()
-                  .padding(vertical = 8.dp),
+                  .padding(vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
               ) {
-                Column(modifier = Modifier.weight(1f)) {
-                  Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  modifier = Modifier.weight(1f)
+                ) {
+                  // Student Initials Avatar
+                  val initials = student.name.split(" ")
+                    .mapNotNull { it.firstOrNull()?.toString() }
+                    .take(2)
+                    .joinToString("")
+                    .uppercase()
+                    .ifEmpty { "S" }
+
+                  Box(
+                    modifier = Modifier
+                      .size(36.dp)
+                      .clip(CircleShape)
+                      .background(DeepTealContainer),
+                    contentAlignment = Alignment.Center
+                  ) {
                     Text(
-                      text = student.name,
+                      text = initials,
                       fontWeight = FontWeight.Bold,
-                      fontSize = 14.sp,
-                      color = TextInkPrimary
+                      color = DeepTealPrimary,
+                      fontSize = 12.sp
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    FeeStatusBadge(status = status)
                   }
-                  Text(
-                    text = "${student.studentClass} • Due: ${FormatUtils.formatCurrency(pendingAmount, profile.currencySymbol)}",
-                    fontSize = 12.sp,
-                    color = TextSecondaryMuted
-                  )
+
+                  Spacer(modifier = Modifier.width(10.dp))
+
+                  Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                      Text(
+                        text = student.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = TextInkPrimary
+                      )
+                      Spacer(modifier = Modifier.width(6.dp))
+                      FeeStatusBadge(status = status)
+                    }
+                    Text(
+                      text = "${student.studentClass} • Due: ${FormatUtils.formatCurrency(pendingAmount, profile.currencySymbol)}",
+                      fontSize = 12.sp,
+                      color = TextSecondaryMuted
+                    )
+                  }
                 }
 
-                // Deep Teal 1-Tap Collection Button
+                // 1-Tap Collect Button
                 Button(
                   onClick = { studentForQuickPayment = student },
                   colors = ButtonDefaults.buttonColors(containerColor = DeepTealPrimary),
-                  shape = RoundedCornerShape(8.dp),
-                  contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                  shape = RoundedCornerShape(10.dp),
+                  contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                   Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(14.dp))
                   Spacer(modifier = Modifier.width(4.dp))
@@ -303,7 +501,7 @@ fun DashboardScreen(
               }
 
               if (index < pendingActionStudents.size - 1) {
-                HorizontalDivider(color = BorderWarmGray.copy(alpha = 0.7f))
+                HorizontalDivider(color = BorderWarmGray.copy(alpha = 0.6f), modifier = Modifier.padding(vertical = 4.dp))
               }
             }
           }
@@ -311,87 +509,7 @@ fun DashboardScreen(
       }
     }
 
-    // 4. Monthly Collection Realization Card (White card, subtle border)
-    item {
-      Card(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 16.dp, vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, BorderWarmGray),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-      ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Column {
-              Text(
-                text = "MONTHLY REALIZATION",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = TextSecondaryMuted,
-                letterSpacing = 0.5.sp,
-                fontSize = 10.sp
-              )
-              Text(
-                text = "${FormatUtils.formatCurrency(stats.collectedThisMonth, profile.currencySymbol)} of ${FormatUtils.formatCurrency(stats.expectedFeeThisMonth, profile.currencySymbol)}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = TextInkPrimary
-              )
-            }
-            Box(
-              modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(if (collectionRate >= 80) StatusPaidContainer else StatusDueContainer)
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-              Text(
-                text = "$collectionRate% Realized",
-                color = if (collectionRate >= 80) StatusOnPaidContainer else StatusOnDueContainer,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
-              )
-            }
-          }
-
-          Spacer(modifier = Modifier.height(10.dp))
-          LinearProgressIndicator(
-            progress = { (collectionRate / 100f).coerceIn(0f, 1f) },
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(6.dp)
-              .clip(RoundedCornerShape(3.dp)),
-            color = DeepTealPrimary,
-            trackColor = SurfaceMuted
-          )
-
-          Spacer(modifier = Modifier.height(10.dp))
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Text(
-              text = "Uncollected: ${FormatUtils.formatCurrency(stats.pendingThisMonth, profile.currencySymbol)}",
-              fontSize = 12.sp,
-              color = StatusDue,
-              fontWeight = FontWeight.SemiBold
-            )
-            Text(
-              text = "${stats.paidStudentsCount} of ${stats.activeStudents} students paid",
-              fontSize = 12.sp,
-              color = TextSecondaryMuted
-            )
-          }
-        }
-      }
-    }
-
-    // 5. Financial Ledger Overview (Neutral white cards, subtle borders, semantic accents)
+    // 5. Financial Ledger Overview (2x2 Grid with high vertical spacing for 18:8 screens)
     item {
       Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
         Text(
@@ -400,12 +518,12 @@ fun DashboardScreen(
           fontWeight = FontWeight.Bold,
           color = TextSecondaryMuted,
           letterSpacing = 0.5.sp,
-          modifier = Modifier.padding(vertical = 4.dp)
+          modifier = Modifier.padding(vertical = 6.dp)
         )
 
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
+          horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
           StatCard(
             title = "Collected",
@@ -434,11 +552,11 @@ fun DashboardScreen(
           )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
+          horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
           StatCard(
             title = "Overdue",
@@ -467,11 +585,11 @@ fun DashboardScreen(
           )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
+          horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
           StatCard(
             title = "Today",
@@ -494,7 +612,7 @@ fun DashboardScreen(
       }
     }
 
-    // 6. Student Roster Ratios Card
+    // 6. Student Roster Overview Card
     item {
       Card(
         modifier = Modifier
@@ -502,11 +620,11 @@ fun DashboardScreen(
           .padding(horizontal = 16.dp, vertical = 6.dp)
           .clickable { onNavigateToStudents() },
         colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         border = BorderStroke(1.dp, BorderWarmGray),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
       ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -528,7 +646,7 @@ fun DashboardScreen(
             )
           }
 
-          Spacer(modifier = Modifier.height(12.dp))
+          Spacer(modifier = Modifier.height(14.dp))
 
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -538,7 +656,7 @@ fun DashboardScreen(
             EnrollmentStat(label = "Active", count = stats.activeStudents, color = StatusPaid)
             EnrollmentStat(label = "Paid", count = stats.paidStudentsCount, color = DeepTealPrimary)
             EnrollmentStat(label = "Pending", count = stats.pendingStudentsCount, color = StatusDue)
-            EnrollmentStat(label = "Left/Past", count = stats.inactiveStudents, color = TextSecondaryMuted)
+            EnrollmentStat(label = "Past", count = stats.inactiveStudents, color = TextSecondaryMuted)
           }
         }
       }
@@ -578,15 +696,34 @@ fun DashboardScreen(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
           colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
-          shape = RoundedCornerShape(14.dp),
+          shape = RoundedCornerShape(18.dp),
           border = BorderStroke(1.dp, BorderWarmGray)
         ) {
-          Text(
-            text = "No payments recorded yet. Collect a fee to begin the transaction ledger.",
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondaryMuted
-          )
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+          ) {
+            Icon(
+              Icons.AutoMirrored.Filled.ReceiptLong,
+              contentDescription = null,
+              tint = TextSecondaryMuted.copy(alpha = 0.6f),
+              modifier = Modifier.size(36.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+              text = "No payments recorded yet",
+              style = MaterialTheme.typography.titleSmall,
+              fontWeight = FontWeight.Bold,
+              color = TextInkPrimary
+            )
+            Text(
+              text = "Collect a fee to record verified transaction receipts.",
+              style = MaterialTheme.typography.bodySmall,
+              color = TextSecondaryMuted
+            )
+          }
         }
       }
     } else {
@@ -597,29 +734,49 @@ fun DashboardScreen(
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable { viewModel.selectReceiptPayment(payment) },
           colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
-          shape = RoundedCornerShape(14.dp),
+          shape = RoundedCornerShape(16.dp),
           border = BorderStroke(1.dp, BorderWarmGray),
           elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
           Row(
             modifier = Modifier
               .fillMaxWidth()
-              .padding(14.dp),
+              .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Column {
-              Text(
-                text = payment.studentName,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = TextInkPrimary
-              )
-              Text(
-                text = "${payment.receiptNumber} • ${payment.paymentMethod.label} • ${DateUtils.formatDisplayDate(payment.paymentDate)}",
-                fontSize = 12.sp,
-                color = TextSecondaryMuted
-              )
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.weight(1f)
+            ) {
+              Box(
+                modifier = Modifier
+                  .size(38.dp)
+                  .clip(CircleShape)
+                  .background(StatusPaidContainer),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(
+                  Icons.Default.CheckCircle,
+                  contentDescription = null,
+                  tint = StatusPaid,
+                  modifier = Modifier.size(20.dp)
+                )
+              }
+              Spacer(modifier = Modifier.width(12.dp))
+              Column {
+                Text(
+                  text = payment.studentName,
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 14.sp,
+                  color = TextInkPrimary
+                )
+                Text(
+                  text = "${payment.receiptNumber} • ${payment.paymentMethod.label} • ${DateUtils.formatDisplayDate(payment.paymentDate)}",
+                  fontSize = 12.sp,
+                  color = TextSecondaryMuted
+                )
+              }
             }
             Column(horizontalAlignment = Alignment.End) {
               Text(
@@ -663,14 +820,14 @@ private fun EnrollmentStat(label: String, count: Int, color: Color) {
     Text(
       text = count.toString(),
       fontWeight = FontWeight.Bold,
-      fontSize = 17.sp,
+      fontSize = 18.sp,
       color = color
     )
     Text(
       text = label,
       fontSize = 11.sp,
       color = TextSecondaryMuted,
-      fontWeight = FontWeight.Normal
+      fontWeight = FontWeight.Medium
     )
   }
 }

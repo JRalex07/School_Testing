@@ -105,13 +105,17 @@ fun TuitionApp(viewModel: TuitionViewModel = viewModel()) {
       bottomBar = {
         if (!isTablet && isMainTab) {
           Surface(
-            color = com.example.ui.theme.CardSurfaceWhite,
-            tonalElevation = 1.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, com.example.ui.theme.BorderWarmGray)
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp,
+            modifier = Modifier
+              .fillMaxWidth()
+              .navigationBarsPadding()
           ) {
             NavigationBar(
-              containerColor = com.example.ui.theme.CardSurfaceWhite,
-              tonalElevation = 0.dp
+              containerColor = MaterialTheme.colorScheme.surface,
+              tonalElevation = 0.dp,
+              modifier = Modifier.height(70.dp)
             ) {
               mainTabs.forEach { tab ->
                 val isSelected = currentScreen == tab
@@ -126,22 +130,23 @@ fun TuitionApp(viewModel: TuitionViewModel = viewModel()) {
                   icon = {
                     Icon(
                       imageVector = tab.icon,
-                      contentDescription = tab.title
+                      contentDescription = tab.title,
+                      modifier = Modifier.size(24.dp)
                     )
                   },
                   label = {
                     Text(
                       text = tab.title,
                       fontSize = 11.sp,
-                      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                     )
                   },
                   colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = com.example.ui.theme.DeepTealContainer,
-                    selectedIconColor = com.example.ui.theme.DeepTealPrimary,
-                    selectedTextColor = com.example.ui.theme.DeepTealPrimary,
-                    unselectedIconColor = com.example.ui.theme.TextSecondaryMuted,
-                    unselectedTextColor = com.example.ui.theme.TextSecondaryMuted
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                   )
                 )
               }

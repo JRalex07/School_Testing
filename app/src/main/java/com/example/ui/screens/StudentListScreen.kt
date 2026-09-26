@@ -1,11 +1,13 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,6 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,7 +39,6 @@ fun StudentListScreen(
   onNavigateToAddStudent: () -> Unit,
   onNavigateToCollectFee: (String) -> Unit
 ) {
-  // Students reactively observed from Room database via ViewModel
   val students by viewModel.students.collectAsState()
   val profile by viewModel.tuitionProfile.collectAsState()
 
@@ -92,8 +95,8 @@ fun StudentListScreen(
       FloatingActionButton(
         onClick = onNavigateToAddStudent,
         containerColor = DeepTealPrimary,
-        contentColor = androidx.compose.ui.graphics.Color.White,
-        shape = RoundedCornerShape(14.dp),
+        contentColor = Color.White,
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier.testTag("add_student_fab")
       ) {
         Icon(Icons.Default.Add, contentDescription = "Add Student")
@@ -120,7 +123,7 @@ fun StudentListScreen(
           }
         },
         singleLine = true,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -136,13 +139,14 @@ fun StudentListScreen(
       LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(bottom = 8.dp)
+        modifier = Modifier.padding(bottom = 6.dp)
       ) {
         item {
           FilterChip(
             selected = selectedStatusFilter == null,
             onClick = { selectedStatusFilter = null },
-            label = { Text("All Status", fontSize = 12.sp) }
+            label = { Text("All Status", fontSize = 12.sp) },
+            shape = RoundedCornerShape(50)
           )
         }
         items(StudentStatus.values()) { status ->
@@ -151,7 +155,8 @@ fun StudentListScreen(
             onClick = {
               selectedStatusFilter = if (selectedStatusFilter == status) null else status
             },
-            label = { Text(status.label, fontSize = 12.sp) }
+            label = { Text(status.label, fontSize = 12.sp) },
+            shape = RoundedCornerShape(50)
           )
         }
       }
@@ -167,7 +172,8 @@ fun StudentListScreen(
             FilterChip(
               selected = selectedClassFilter == null,
               onClick = { selectedClassFilter = null },
-              label = { Text("All Classes", fontSize = 12.sp) }
+              label = { Text("All Classes", fontSize = 12.sp) },
+              shape = RoundedCornerShape(50)
             )
           }
           items(classes) { cls ->
@@ -176,13 +182,14 @@ fun StudentListScreen(
               onClick = {
                 selectedClassFilter = if (selectedClassFilter == cls) null else cls
               },
-              label = { Text(cls, fontSize = 12.sp) }
+              label = { Text(cls, fontSize = 12.sp) },
+              shape = RoundedCornerShape(50)
             )
           }
         }
       }
 
-      // Student Cards List fetched from Room Database
+      // Student Cards List
       if (filteredStudents.isEmpty()) {
         Box(
           modifier = Modifier
@@ -191,21 +198,30 @@ fun StudentListScreen(
           contentAlignment = Alignment.Center
         ) {
           Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-              Icons.Default.PersonSearch,
-              contentDescription = null,
-              modifier = Modifier.size(52.dp),
-              tint = TextSecondaryMuted
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            Box(
+              modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(SurfaceMuted),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                Icons.Default.PersonSearch,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = TextSecondaryMuted
+              )
+            }
+            Spacer(modifier = Modifier.height(14.dp))
             Text(
-              text = if (searchQuery.isNotBlank() || selectedStatusFilter != null) "No matching students found." else "No students enrolled yet.",
+              text = if (searchQuery.isNotBlank() || selectedStatusFilter != null) "No matching students found" else "No students enrolled yet",
               fontWeight = FontWeight.Bold,
               fontSize = 16.sp,
               color = TextInkPrimary
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-              text = "Tap the 'Add Student' button to enroll a new student.",
+              text = "Tap below to enroll your first student to the ledger.",
               fontSize = 13.sp,
               color = TextSecondaryMuted
             )
@@ -213,7 +229,7 @@ fun StudentListScreen(
             Button(
               onClick = onNavigateToAddStudent,
               colors = ButtonDefaults.buttonColors(containerColor = DeepTealPrimary),
-              shape = RoundedCornerShape(10.dp)
+              shape = RoundedCornerShape(12.dp)
             ) {
               Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
               Spacer(modifier = Modifier.width(6.dp))
@@ -224,7 +240,7 @@ fun StudentListScreen(
       } else {
         LazyColumn(
           modifier = Modifier.fillMaxSize(),
-          contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
+          contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
           verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
           items(filteredStudents, key = { it.id }) { student ->
@@ -270,55 +286,83 @@ private fun StudentItemCard(
   onCardClick: () -> Unit,
   onOpenRecordPaymentDialog: () -> Unit
 ) {
+  val initials = student.name.split(" ")
+    .mapNotNull { it.firstOrNull()?.toString() }
+    .take(2)
+    .joinToString("")
+    .uppercase()
+    .ifEmpty { "S" }
+
   Card(
     modifier = Modifier
       .fillMaxWidth()
       .clickable { onCardClick() },
-    shape = RoundedCornerShape(14.dp),
+    shape = RoundedCornerShape(18.dp),
     colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
-    border = androidx.compose.foundation.BorderStroke(1.dp, BorderWarmGray),
-    elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+    border = BorderStroke(1.dp, BorderWarmGray),
+    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
   ) {
-    Column(modifier = Modifier.padding(14.dp)) {
+    Column(modifier = Modifier.padding(16.dp)) {
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
       ) {
-        Column(modifier = Modifier.weight(1f)) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier = Modifier.weight(1f)
+        ) {
+          Box(
+            modifier = Modifier
+              .size(42.dp)
+              .clip(CircleShape)
+              .background(DeepTealContainer),
+            contentAlignment = Alignment.Center
+          ) {
             Text(
-              text = student.name,
+              text = initials,
               fontWeight = FontWeight.Bold,
-              fontSize = 15.sp,
-              color = TextInkPrimary
+              color = DeepTealPrimary,
+              fontSize = 14.sp
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            StudentStatusBadge(status = student.status)
           }
 
-          Text(
-            text = "${student.studentId} • ${student.studentClass} • ${student.batch}",
-            fontSize = 12.sp,
-            color = TextSecondaryMuted
-          )
+          Spacer(modifier = Modifier.width(12.dp))
 
-          if (student.parentContact.isNotBlank()) {
+          Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text(
+                text = student.name,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = TextInkPrimary
+              )
+              Spacer(modifier = Modifier.width(8.dp))
+              StudentStatusBadge(status = student.status)
+            }
+
             Text(
-              text = "Parent: ${student.parentContact}",
-              fontSize = 11.sp,
+              text = "${student.studentId} • ${student.studentClass} • ${student.batch}",
+              fontSize = 12.sp,
               color = TextSecondaryMuted
             )
+
+            if (student.parentContact.isNotBlank()) {
+              Text(
+                text = "Parent: ${student.parentContact}",
+                fontSize = 11.sp,
+                color = TextSecondaryMuted
+              )
+            }
           }
         }
 
-        // Current Month Status Badge
         FeeStatusBadge(status = student.currentMonthStatus)
       }
 
-      Spacer(modifier = Modifier.height(10.dp))
-      HorizontalDivider(color = BorderWarmGray.copy(alpha = 0.7f))
-      Spacer(modifier = Modifier.height(10.dp))
+      Spacer(modifier = Modifier.height(12.dp))
+      HorizontalDivider(color = BorderWarmGray.copy(alpha = 0.6f))
+      Spacer(modifier = Modifier.height(12.dp))
 
       Row(
         modifier = Modifier.fillMaxWidth(),
@@ -350,27 +394,26 @@ private fun StudentItemCard(
           }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          // Deep Teal Record Payment action
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
           Button(
             onClick = onOpenRecordPaymentDialog,
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(containerColor = DeepTealPrimary),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
           ) {
             Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(15.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("Record Payment", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("Collect", fontSize = 12.sp, fontWeight = FontWeight.Bold)
           }
 
           OutlinedButton(
             onClick = onCardClick,
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = TextInkPrimary),
-            border = androidx.compose.foundation.BorderStroke(1.dp, BorderWarmGray),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            border = BorderStroke(1.dp, BorderWarmGray),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
           ) {
-            Text("Profile", fontSize = 12.sp)
+            Text("Profile", fontSize = 12.sp, fontWeight = FontWeight.Medium)
           }
         }
       }

@@ -22,31 +22,36 @@ fun StatCard(
   value: String,
   subtitle: String? = null,
   icon: ImageVector? = null,
-  containerColor: Color = CardSurfaceWhite,
-  contentColor: Color = TextInkPrimary,
-  iconBackgroundColor: Color = SurfaceMuted,
-  iconTintColor: Color = TextSecondaryMuted,
+  containerColor: Color = Color.Unspecified,
+  contentColor: Color = Color.Unspecified,
+  iconBackgroundColor: Color = Color.Unspecified,
+  iconTintColor: Color = Color.Unspecified,
   indicatorText: String? = null,
   indicatorColor: Color? = null,
   modifier: Modifier = Modifier,
   onClick: (() -> Unit)? = null
 ) {
+  val resolvedContainer = if (containerColor != Color.Unspecified) containerColor else MaterialTheme.colorScheme.surface
+  val resolvedContent = if (contentColor != Color.Unspecified) contentColor else MaterialTheme.colorScheme.onSurface
+  val resolvedIconBg = if (iconBackgroundColor != Color.Unspecified) iconBackgroundColor else MaterialTheme.colorScheme.surfaceVariant
+  val resolvedIconTint = if (iconTintColor != Color.Unspecified) iconTintColor else MaterialTheme.colorScheme.onSurfaceVariant
+
   Card(
     modifier = modifier,
-    shape = RoundedCornerShape(14.dp),
+    shape = RoundedCornerShape(18.dp),
     colors = CardDefaults.cardColors(
-      containerColor = containerColor,
-      contentColor = contentColor
+      containerColor = resolvedContainer,
+      contentColor = resolvedContent
     ),
-    border = BorderStroke(1.dp, BorderWarmGray),
-    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 2.dp),
+    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 3.dp),
     onClick = { onClick?.invoke() },
     enabled = onClick != null
   ) {
     Column(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(14.dp)
+        .padding(16.dp)
     ) {
       Row(
         modifier = Modifier.fillMaxWidth(),

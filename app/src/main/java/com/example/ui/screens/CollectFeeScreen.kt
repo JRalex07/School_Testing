@@ -1,9 +1,13 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -14,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,7 +48,6 @@ fun CollectFeeScreen(
   }
 
   var isStudentDropdownExpanded by remember { mutableStateOf(false) }
-  var studentSearchInPicker by remember { mutableStateOf("") }
 
   // Target period selection: null = Auto (Oldest pending first), or specific period string
   var selectedTargetPeriod by remember { mutableStateOf<String?>(null) }
@@ -88,61 +92,148 @@ fun CollectFeeScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Collect Tuition Fee", fontWeight = FontWeight.Bold) },
+        title = {
+          Text(
+            "Collect Tuition Fee",
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = TextInkPrimary
+          )
+        },
         navigationIcon = {
           IconButton(onClick = onNavigateBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextInkPrimary)
           }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = CardSurfaceWhite)
       )
+    },
+    bottomBar = {
+      // 18:8 Ergonomic Sticky Bottom Bar (Always in reach of the thumb)
+      Surface(
+        color = CardSurfaceWhite,
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, BorderWarmGray),
+        modifier = Modifier
+          .fillMaxWidth()
+          .navigationBarsPadding()
+          .imePadding()
+      ) {
+        Column(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+          Button(
+            onClick = {
+              if (selectedStudent == null) {
+                validationError = "Please select a student."
+                return@Button
+              }
+              val amt = amountStr.toDoubleOrNull()
+              if (amt == null || amt <= 0) {
+                validationError = "Please enter a valid amount greater than zero."
+                return@Button
+              }
+
+              isSubmitting = true
+              validationError = null
+
+              viewModel.collectFee(
+                studentId = selectedStudent!!.id,
+                amount = amt,
+                paymentDate = paymentDate.trim(),
+                paymentMethod = paymentMethod,
+                transactionReference = transactionRef.trim(),
+                targetPeriod = selectedTargetPeriod,
+                notes = notes.trim(),
+                treatExcessAsAdvance = treatExcessAsAdvance
+              ) { payment ->
+                isSubmitting = false
+                onPaymentSuccess(payment)
+              }
+            },
+            enabled = !isSubmitting && selectedStudent != null,
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(52.dp),
+            colors = ButtonDefaults.buttonColors(
+              containerColor = DeepTealPrimary,
+              disabledContainerColor = SurfaceMuted
+            ),
+            shape = RoundedCornerShape(14.dp)
+          ) {
+            if (isSubmitting) {
+              CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
+            } else {
+              Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, modifier = Modifier.size(20.dp))
+              Spacer(modifier = Modifier.width(8.dp))
+              Text("Record Payment & Generate Receipt", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+          }
+        }
+      }
     }
   ) { innerPadding ->
     Column(
       modifier = Modifier
         .fillMaxSize()
         .padding(innerPadding)
-        .background(MaterialTheme.colorScheme.background)
+        .background(WarmIvoryBackground)
         .verticalScroll(scrollState)
-        .padding(16.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp)
+        .padding(horizontal = 16.dp, vertical = 12.dp),
+      verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
       if (validationError != null) {
         Card(
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-          shape = RoundedCornerShape(8.dp)
+          colors = CardDefaults.cardColors(containerColor = StatusOverdueContainer),
+          shape = RoundedCornerShape(12.dp),
+          border = BorderStroke(1.dp, StatusOverdue.copy(alpha = 0.3f))
         ) {
-          Text(
-            text = validationError ?: "",
-            color = MaterialTheme.colorScheme.onErrorContainer,
+          Row(
             modifier = Modifier.padding(12.dp),
-            style = MaterialTheme.typography.bodySmall
-          )
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = StatusOverdue, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+              text = validationError ?: "",
+              color = StatusOnOverdueContainer,
+              style = MaterialTheme.typography.bodySmall,
+              fontWeight = FontWeight.Medium
+            )
+          }
         }
       }
 
       // Step 1: Select Student Card
       Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+        border = BorderStroke(1.dp, BorderWarmGray),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
       ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Text("1. Select Student", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
+          Text("1. Select Student", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = DeepTealPrimary)
 
           ExposedDropdownMenuBox(
             expanded = isStudentDropdownExpanded,
             onExpandedChange = { isStudentDropdownExpanded = it }
           ) {
             OutlinedTextField(
-              value = selectedStudent?.let { "${it.fullName} (${it.studentId} - ${it.studentClass})" } ?: "Select student...",
+              value = selectedStudent?.let { "${it.fullName} (${it.studentId} • ${it.studentClass})" } ?: "Select student...",
               onValueChange = {},
               readOnly = true,
               trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isStudentDropdownExpanded) },
               modifier = Modifier
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 .fillMaxWidth(),
-              shape = RoundedCornerShape(10.dp)
+              shape = RoundedCornerShape(12.dp),
+              colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = BorderWarmGray,
+                focusedBorderColor = DeepTealPrimary
+              )
             )
 
             ExposedDropdownMenu(
@@ -153,8 +244,8 @@ fun CollectFeeScreen(
                 DropdownMenuItem(
                   text = {
                     Column {
-                      Text(st.fullName, fontWeight = FontWeight.SemiBold)
-                      Text("${st.studentId} • ${st.studentClass} • Monthly ₹${st.monthlyFee.toInt()}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                      Text(st.fullName, fontWeight = FontWeight.SemiBold, color = TextInkPrimary)
+                      Text("${st.studentId} • ${st.studentClass} • Monthly ₹${st.monthlyFee.toInt()}", fontSize = 12.sp, color = TextSecondaryMuted)
                     }
                   },
                   onClick = {
@@ -172,8 +263,8 @@ fun CollectFeeScreen(
             Box(
               modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                .clip(RoundedCornerShape(12.dp))
+                .background(SurfaceMuted)
                 .padding(12.dp)
             ) {
               Row(
@@ -182,7 +273,7 @@ fun CollectFeeScreen(
                 verticalAlignment = Alignment.CenterVertically
               ) {
                 Column {
-                  Text("Total Pending / Arrears", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                  Text("Total Pending / Arrears", fontSize = 11.sp, color = TextSecondaryMuted)
                   Text(
                     text = FormatUtils.formatCurrency(totalPendingForStudent, profile.currencySymbol),
                     fontWeight = FontWeight.Bold,
@@ -191,7 +282,7 @@ fun CollectFeeScreen(
                   )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                  Text("Advance Balance", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                  Text("Advance Prepaid Balance", fontSize = 11.sp, color = TextSecondaryMuted)
                   Text(
                     text = FormatUtils.formatCurrency(st.advanceBalance, profile.currencySymbol),
                     fontWeight = FontWeight.Bold,
@@ -208,11 +299,13 @@ fun CollectFeeScreen(
       // Step 2: Fee Period & Payment Allocation
       Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+        border = BorderStroke(1.dp, BorderWarmGray),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
       ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Text("2. Fee Period Allocation", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
+          Text("2. Fee Period Allocation", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = DeepTealPrimary)
 
           ExposedDropdownMenuBox(
             expanded = isPeriodDropdownExpanded,
@@ -232,7 +325,11 @@ fun CollectFeeScreen(
               modifier = Modifier
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 .fillMaxWidth(),
-              shape = RoundedCornerShape(10.dp)
+              shape = RoundedCornerShape(12.dp),
+              colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = BorderWarmGray,
+                focusedBorderColor = DeepTealPrimary
+              )
             )
 
             ExposedDropdownMenu(
@@ -257,7 +354,6 @@ fun CollectFeeScreen(
                   }
                 )
               }
-              // Upcoming / future months option
               val nextP = DateUtils.nextPeriod(DateUtils.currentPeriod())
               DropdownMenuItem(
                 text = { Text("Advance: ${DateUtils.formatDisplayPeriod(nextP)}") },
@@ -271,42 +367,51 @@ fun CollectFeeScreen(
         }
       }
 
-      // Step 3: Amount & Payment Details
+      // Step 3: Amount & Payment Details Card
       Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+        border = BorderStroke(1.dp, BorderWarmGray),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
       ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-          Text("3. Payment Details", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
+          Text("3. Payment Details", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = DeepTealPrimary)
 
           OutlinedTextField(
             value = amountStr,
             onValueChange = { amountStr = it },
-            label = { Text("Amount Received (₹) *") },
-            leadingIcon = { Icon(Icons.Default.CurrencyRupee, contentDescription = null) },
+            label = { Text("Amount Received (${profile.currencySymbol}) *") },
+            leadingIcon = { Icon(Icons.Default.CurrencyRupee, contentDescription = null, tint = DeepTealPrimary) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+              unfocusedBorderColor = BorderWarmGray,
+              focusedBorderColor = DeepTealPrimary
+            )
           )
 
-          // Quick Amount Chips
+          // Quick Amount Chips for 18:8 tall screens
           val enteredAmount = amountStr.toDoubleOrNull() ?: 0.0
-          Row(
+          LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
           ) {
-            val chips = listOf(500.0, 1000.0, 1500.0, 2000.0)
-            chips.forEach { chipAmt ->
-              AssistChip(
-                onClick = { amountStr = chipAmt.toInt().toString() },
-                label = { Text("₹${chipAmt.toInt()}", fontSize = 11.sp) }
-              )
-            }
             if (totalPendingForStudent > 0) {
-              AssistChip(
-                onClick = { amountStr = totalPendingForStudent.toInt().toString() },
-                label = { Text("Full Due", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+              item {
+                SuggestionChip(
+                  onClick = { amountStr = totalPendingForStudent.toInt().toString() },
+                  label = { Text("Full Due (${FormatUtils.formatCurrency(totalPendingForStudent, profile.currencySymbol)})", fontWeight = FontWeight.Bold) },
+                  colors = SuggestionChipDefaults.suggestionChipColors(containerColor = StatusDueContainer)
+                )
+              }
+            }
+            val chipAmounts = listOf(500.0, 1000.0, 1500.0, 2000.0, 3000.0, 5000.0)
+            items(chipAmounts) { chipAmt ->
+              SuggestionChip(
+                onClick = { amountStr = chipAmt.toInt().toString() },
+                label = { Text("₹${chipAmt.toInt()}", fontSize = 12.sp) }
               )
             }
           }
@@ -315,34 +420,49 @@ fun CollectFeeScreen(
           if (enteredAmount > 0 && selectedStudent != null) {
             if (enteredAmount < totalPendingForStudent) {
               val rem = totalPendingForStudent - enteredAmount
-              Text(
-                text = "⚡ Partial Payment: Student will have ${FormatUtils.formatCurrency(rem, profile.currencySymbol)} remaining pending.",
-                fontSize = 12.sp,
-                color = BrandBluePrimary,
-                fontWeight = FontWeight.Medium
-              )
+              Surface(
+                color = StatusDueContainer,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Text(
+                  text = "⚡ Partial Payment: Student will have ${FormatUtils.formatCurrency(rem, profile.currencySymbol)} remaining pending.",
+                  fontSize = 12.sp,
+                  color = StatusOnDueContainer,
+                  fontWeight = FontWeight.Medium,
+                  modifier = Modifier.padding(10.dp)
+                )
+              }
             } else if (enteredAmount > totalPendingForStudent && totalPendingForStudent > 0) {
               val excess = enteredAmount - totalPendingForStudent
-              Text(
-                text = "⚡ Advance Payment: Excess ${FormatUtils.formatCurrency(excess, profile.currencySymbol)} will be credited to Advance Balance.",
-                fontSize = 12.sp,
-                color = StatusAdvance,
-                fontWeight = FontWeight.Medium
-              )
+              Surface(
+                color = StatusAdvanceContainer,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()
+              ) {
+                Text(
+                  text = "⚡ Advance Payment: Excess ${FormatUtils.formatCurrency(excess, profile.currencySymbol)} will be credited to Advance Balance.",
+                  fontSize = 12.sp,
+                  color = StatusOnAdvanceContainer,
+                  fontWeight = FontWeight.Medium,
+                  modifier = Modifier.padding(10.dp)
+                )
+              }
             }
           }
 
           // Payment Method Selector
-          Text("Payment Method *", style = MaterialTheme.typography.labelSmall)
-          Row(
+          Text("Payment Mode *", style = MaterialTheme.typography.labelSmall, color = TextSecondaryMuted)
+          LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
           ) {
-            PaymentMethod.values().take(4).forEach { method ->
+            items(PaymentMethod.values()) { method ->
               FilterChip(
                 selected = paymentMethod == method,
                 onClick = { paymentMethod = method },
-                label = { Text(method.label, fontSize = 12.sp) }
+                label = { Text(method.label, fontSize = 12.sp) },
+                shape = RoundedCornerShape(50)
               )
             }
           }
@@ -353,75 +473,32 @@ fun CollectFeeScreen(
             label = { Text("Transaction Reference / UPI Ref (Optional)") },
             placeholder = { Text("e.g. UPI/39102910 or Cheque #129") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
           )
 
-          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-              value = paymentDate,
-              onValueChange = { paymentDate = it },
-              label = { Text("Payment Date") },
-              leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
-              singleLine = true,
-              modifier = Modifier.weight(1f)
-            )
-          }
+          OutlinedTextField(
+            value = paymentDate,
+            onValueChange = { paymentDate = it },
+            label = { Text("Payment Date (YYYY-MM-DD)") },
+            leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+          )
 
           OutlinedTextField(
             value = notes,
             onValueChange = { notes = it },
             label = { Text("Notes / Remarks (Optional)") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
           )
         }
       }
 
-      // Submit Button with Duplicate Protection
-      Button(
-        onClick = {
-          if (selectedStudent == null) {
-            validationError = "Please select a student."
-            return@Button
-          }
-          val amt = amountStr.toDoubleOrNull()
-          if (amt == null || amt <= 0) {
-            validationError = "Please enter a valid amount greater than zero."
-            return@Button
-          }
-
-          isSubmitting = true
-          validationError = null
-
-          viewModel.collectFee(
-            studentId = selectedStudent!!.id,
-            amount = amt,
-            paymentDate = paymentDate.trim(),
-            paymentMethod = paymentMethod,
-            transactionReference = transactionRef.trim(),
-            targetPeriod = selectedTargetPeriod,
-            notes = notes.trim(),
-            treatExcessAsAdvance = treatExcessAsAdvance
-          ) { payment ->
-            isSubmitting = false
-            onPaymentSuccess(payment)
-          }
-        },
-        enabled = !isSubmitting && selectedStudent != null,
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(52.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = BrandBluePrimary),
-        shape = RoundedCornerShape(10.dp)
-      ) {
-        if (isSubmitting) {
-          CircularProgressIndicator(color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(22.dp))
-        } else {
-          Icon(Icons.Default.Receipt, contentDescription = null)
-          Spacer(modifier = Modifier.width(8.dp))
-          Text("Record Payment & Generate Receipt", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        }
-      }
+      Spacer(modifier = Modifier.height(20.dp))
     }
   }
 }

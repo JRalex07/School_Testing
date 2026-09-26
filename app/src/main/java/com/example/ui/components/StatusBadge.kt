@@ -33,16 +33,16 @@ fun FeeStatusBadge(status: FeeStatus, modifier: Modifier = Modifier) {
 
   Box(
     modifier = modifier
-      .clip(RoundedCornerShape(6.dp))
+      .clip(RoundedCornerShape(50))
       .background(bgColor)
-      .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(6.dp))
-      .padding(horizontal = 8.dp, vertical = 3.dp)
+      .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(50))
+      .padding(horizontal = 10.dp, vertical = 4.dp)
   ) {
     Text(
       text = status.label,
       color = textColor,
       fontSize = 11.sp,
-      fontWeight = FontWeight.SemiBold
+      fontWeight = FontWeight.Bold
     )
   }
 }
@@ -59,16 +59,16 @@ fun StudentStatusBadge(status: StudentStatus, modifier: Modifier = Modifier) {
 
   Box(
     modifier = modifier
-      .clip(RoundedCornerShape(6.dp))
+      .clip(RoundedCornerShape(50))
       .background(bgColor)
-      .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(6.dp))
-      .padding(horizontal = 8.dp, vertical = 3.dp)
+      .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(50))
+      .padding(horizontal = 10.dp, vertical = 4.dp)
   ) {
     Text(
       text = status.label,
       color = textColor,
       fontSize = 11.sp,
-      fontWeight = FontWeight.Medium
+      fontWeight = FontWeight.SemiBold
     )
   }
 }
@@ -83,16 +83,16 @@ fun PaymentStatusBadge(status: PaymentRecordStatus, modifier: Modifier = Modifie
 
   Box(
     modifier = modifier
-      .clip(RoundedCornerShape(6.dp))
+      .clip(RoundedCornerShape(50))
       .background(bgColor)
-      .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(6.dp))
-      .padding(horizontal = 8.dp, vertical = 3.dp)
+      .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(50))
+      .padding(horizontal = 10.dp, vertical = 4.dp)
   ) {
     Text(
       text = status.label,
       color = textColor,
       fontSize = 11.sp,
-      fontWeight = FontWeight.SemiBold
+      fontWeight = FontWeight.Bold
     )
   }
 }
