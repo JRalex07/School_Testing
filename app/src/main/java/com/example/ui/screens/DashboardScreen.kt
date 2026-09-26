@@ -186,7 +186,7 @@ fun DashboardScreen(
                 verticalAlignment = Alignment.CenterVertically
               ) {
                 Icon(
-                  imageVector = if (collectionRate >= 80) Icons.Default.TrendingUp else Icons.Default.Pending,
+                  imageVector = if (collectionRate >= 80) Icons.AutoMirrored.Filled.TrendingUp else Icons.Default.Pending,
                   contentDescription = null,
                   modifier = Modifier.size(14.dp),
                   tint = Color.White

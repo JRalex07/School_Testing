@@ -170,11 +170,11 @@ data class AuditLog(
 )
 
 data class TuitionProfile(
-  val tuitionName: String = "Sharma Tuition Academy",
-  val teacherName: String = "Er. Rajesh Sharma",
-  val phone: String = "+91 98765 43210",
-  val address: String = "Royal Palms, Sector 62, Noida",
-  val upiId: String = "sharmatuition@okhdfcbank",
+  val tuitionName: String = "ALEX",
+  val teacherName: String = "Raman Kumar Sharma",
+  val phone: String = "+91 8294475301",
+  val address: String = "Near Hanuman Mandir, Darbhanga, Bihar",
+  val upiId: String = "alex2200037@okaxis",
   val defaultMonthlyFee: Double = 1500.0,
   val defaultDueDay: Int = 10,
   val currencySymbol: String = "₹",

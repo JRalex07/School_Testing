@@ -22,16 +22,16 @@ object ReceiptPrinter {
         <title>Receipt - ${payment.receiptNumber}</title>
         <style>
           body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 24px; color: #1e293b; max-width: 600px; margin: 0 auto; }
-          .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 16px; margin-bottom: 20px; }
-          .title { font-size: 24px; font-weight: bold; color: #1e3a8a; margin: 0; }
+          .header { text-align: center; border-bottom: 2px solid #176B67; padding-bottom: 16px; margin-bottom: 20px; }
+          .title { font-size: 24px; font-weight: bold; color: #0F4F4B; margin: 0; }
           .subtitle { font-size: 14px; color: #64748b; margin-top: 4px; }
-          .badge { display: inline-block; background-color: #d1fae5; color: #065f46; font-size: 12px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-top: 8px; }
+          .badge { display: inline-block; background-color: #e8f1f0; color: #0b3a37; font-size: 12px; font-weight: bold; padding: 4px 12px; border-radius: 9999px; margin-top: 8px; }
           .grid { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 14px; }
           .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
           .box-title { font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-bottom: 8px; }
           .row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
-          .amount-box { background: #eff6ff; border: 2px dashed #2563eb; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0; }
-          .amount-val { font-size: 28px; font-weight: bold; color: #1d4ed8; }
+          .amount-box { background: #e8f1f0; border: 2px dashed #176B67; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0; }
+          .amount-val { font-size: 28px; font-weight: bold; color: #0b3a37; }
           .amount-words { font-size: 13px; color: #475569; font-style: italic; margin-top: 4px; }
           .footer { text-align: center; font-size: 12px; color: #94a3b8; margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px; }
           .signature { margin-top: 40px; display: flex; justify-content: space-between; font-size: 13px; }

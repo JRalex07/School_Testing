@@ -1,6 +1,9 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -149,12 +152,77 @@ fun StudentDetailScreen(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-              InfoItem("Parent Phone", student.parentPhone.ifBlank { "N/A" })
-              InfoItem("Student Phone", student.phoneNumber.ifBlank { "N/A" })
+            // Single Parent Contact Display with Direct Call & WhatsApp
+            Surface(
+              shape = RoundedCornerShape(12.dp),
+              color = SurfaceMuted,
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Column(modifier = Modifier.weight(1f)) {
+                  Text(
+                    text = "PARENT / GUARDIAN CONTACT",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextSecondaryMuted,
+                    letterSpacing = 0.5.sp
+                  )
+                  Text(
+                    text = student.parentPhone.ifBlank { "No parent phone number" },
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextInkPrimary
+                  )
+                  if (student.fatherName.isNotBlank() || student.motherName.isNotBlank()) {
+                    Text(
+                      text = listOf(student.fatherName, student.motherName).filter { it.isNotBlank() }.joinToString(" • "),
+                      fontSize = 11.sp,
+                      color = TextSecondaryMuted
+                    )
+                  }
+                }
+
+                if (student.parentPhone.isNotBlank()) {
+                  val context = LocalContext.current
+                  Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(
+                      onClick = {
+                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${student.parentPhone}"))
+                        context.startActivity(intent)
+                      },
+                      modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(DeepTealContainer)
+                    ) {
+                      Icon(Icons.Default.Phone, contentDescription = "Call Parent", tint = DeepTealPrimary, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(
+                      onClick = {
+                        val cleanPhone = student.parentPhone.replace("+", "").replace(" ", "").replace("-", "")
+                        val uri = Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone")
+                        val intent = Intent(Intent.ACTION_VIEW, uri)
+                        context.startActivity(intent)
+                      },
+                      modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(StatusPaidContainer)
+                    ) {
+                      Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "WhatsApp Parent", tint = StatusPaid, modifier = Modifier.size(18.dp))
+                    }
+                  }
+                }
+              }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
               InfoItem("Monthly Base Fee", FormatUtils.formatCurrency(student.monthlyFee, profile.currencySymbol))

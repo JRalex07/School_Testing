@@ -1,7 +1,10 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -58,7 +61,7 @@ fun RecordPaymentDialog(
     modifier = Modifier
       .fillMaxWidth()
       .padding(16.dp),
-    shape = RoundedCornerShape(14.dp),
+    shape = RoundedCornerShape(22.dp),
     containerColor = CardSurfaceWhite,
     title = {
       Row(
@@ -66,7 +69,7 @@ fun RecordPaymentDialog(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         Icon(Icons.Default.Payments, contentDescription = null, tint = DeepTealPrimary)
-        Text("Record Payment", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextInkPrimary)
+        Text("Record Payment (INR ₹)", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextInkPrimary)
       }
     },
     text = {
@@ -76,13 +79,13 @@ fun RecordPaymentDialog(
           .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
-        // Student Info Banner (opaque, soft border)
+        // Student Info Banner (Single Parent Contact shown)
         Box(
           modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(SurfaceMuted)
-            .padding(12.dp)
+            .padding(14.dp)
         ) {
           Column {
             Row(
@@ -100,7 +103,7 @@ fun RecordPaymentDialog(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-              text = "${student.studentId} • ${student.studentClass} • Contact: ${student.parentContact}",
+              text = "${student.studentId} • ${student.studentClass} • Parent: ${student.parentContact}",
               fontSize = 12.sp,
               color = TextSecondaryMuted
             )
@@ -118,7 +121,8 @@ fun RecordPaymentDialog(
           Text(
             text = errorMessage ?: "",
             color = MaterialTheme.colorScheme.error,
-            fontSize = 12.sp
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
           )
         }
 
@@ -130,26 +134,32 @@ fun RecordPaymentDialog(
             errorMessage = null
           },
           label = { Text("Payment Amount (₹) *") },
-          leadingIcon = { Icon(Icons.Default.CurrencyRupee, contentDescription = null) },
+          leadingIcon = { Icon(Icons.Default.CurrencyRupee, contentDescription = null, tint = DeepTealPrimary) },
           singleLine = true,
           modifier = Modifier
             .fillMaxWidth()
             .testTag("payment_amount_input"),
-          shape = RoundedCornerShape(8.dp)
+          shape = RoundedCornerShape(12.dp),
+          colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = BorderWarmGray,
+            focusedBorderColor = DeepTealPrimary
+          )
         )
 
         // Quick amount chips
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(6.dp)
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-          AssistChip(
+          SuggestionChip(
             onClick = { amountStr = student.monthlyFeeAmount.toInt().toString() },
-            label = { Text("Full Fee (₹${student.monthlyFeeAmount.toInt()})", fontSize = 11.sp) }
+            label = { Text("Full (₹${student.monthlyFeeAmount.toInt()})", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+            shape = RoundedCornerShape(50)
           )
-          AssistChip(
+          SuggestionChip(
             onClick = { amountStr = (student.monthlyFeeAmount / 2).toInt().toString() },
-            label = { Text("Half (₹${(student.monthlyFeeAmount / 2).toInt()})", fontSize = 11.sp) }
+            label = { Text("Half (₹${(student.monthlyFeeAmount / 2).toInt()})", fontSize = 11.sp) },
+            shape = RoundedCornerShape(50)
           )
         }
 
@@ -157,7 +167,7 @@ fun RecordPaymentDialog(
         Box(
           modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(
               if (projectedStatus == FeeStatus.PAID) StatusPaidContainer
               else StatusPartialContainer
@@ -179,17 +189,18 @@ fun RecordPaymentDialog(
           }
         }
 
-        // Payment Method
-        Text("Payment Method", style = MaterialTheme.typography.labelSmall)
-        Row(
+        // Payment Method Chips
+        Text("Payment Mode", style = MaterialTheme.typography.labelSmall, color = TextSecondaryMuted)
+        LazyRow(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-          listOf(PaymentMethod.CASH, PaymentMethod.UPI, PaymentMethod.BANK_TRANSFER).forEach { method ->
+          items(PaymentMethod.values()) { method ->
             FilterChip(
               selected = paymentMethod == method,
               onClick = { paymentMethod = method },
-              label = { Text(method.label, fontSize = 11.sp) }
+              label = { Text(method.label, fontSize = 11.sp) },
+              shape = RoundedCornerShape(50)
             )
           }
         }
@@ -198,22 +209,22 @@ fun RecordPaymentDialog(
         OutlinedTextField(
           value = paymentDate,
           onValueChange = { paymentDate = it },
-          label = { Text("Payment Date") },
-          leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+          label = { Text("Payment Date (YYYY-MM-DD)") },
+          leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = TextSecondaryMuted) },
           singleLine = true,
           modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(8.dp)
+          shape = RoundedCornerShape(12.dp)
         )
 
-        // Reference / Transaction ID
+        // Transaction Ref
         OutlinedTextField(
           value = transactionRef,
           onValueChange = { transactionRef = it },
-          label = { Text("Transaction Ref / UTR (Optional)") },
-          placeholder = { Text("e.g. UPI-92810") },
+          label = { Text("Transaction Reference / UPI Ref (Optional)") },
+          placeholder = { Text("e.g. UPI/12345678 or Cash") },
           singleLine = true,
           modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(8.dp)
+          shape = RoundedCornerShape(12.dp)
         )
 
         // Notes
@@ -223,7 +234,7 @@ fun RecordPaymentDialog(
           label = { Text("Notes (Optional)") },
           singleLine = true,
           modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(8.dp)
+          shape = RoundedCornerShape(12.dp)
         )
       }
     },
@@ -231,8 +242,12 @@ fun RecordPaymentDialog(
       Button(
         onClick = {
           val amt = amountStr.toDoubleOrNull()
-          if (amt == null || amt <= 0.0) {
-            errorMessage = "Please enter a valid amount greater than 0."
+          if (amt == null || amt <= 0) {
+            errorMessage = "Please enter a valid amount greater than 0"
+            return@Button
+          }
+          if (paymentDate.isBlank()) {
+            errorMessage = "Payment date is required"
             return@Button
           }
           onConfirmPayment(
@@ -244,20 +259,21 @@ fun RecordPaymentDialog(
           )
         },
         colors = ButtonDefaults.buttonColors(containerColor = DeepTealPrimary),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier.testTag("confirm_payment_button")
       ) {
-        Text("Record Payment", fontWeight = FontWeight.Bold)
+        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text("Confirm & Record", fontWeight = FontWeight.Bold)
       }
     },
     dismissButton = {
       OutlinedButton(
         onClick = onDismiss,
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextInkPrimary),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderWarmGray),
-        shape = RoundedCornerShape(10.dp)
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, BorderWarmGray)
       ) {
-        Text("Cancel")
+        Text("Cancel", color = TextInkPrimary)
       }
     }
   )

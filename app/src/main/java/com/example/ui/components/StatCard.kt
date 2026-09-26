@@ -31,10 +31,10 @@ fun StatCard(
   modifier: Modifier = Modifier,
   onClick: (() -> Unit)? = null
 ) {
-  val resolvedContainer = if (containerColor != Color.Unspecified) containerColor else MaterialTheme.colorScheme.surface
-  val resolvedContent = if (contentColor != Color.Unspecified) contentColor else MaterialTheme.colorScheme.onSurface
-  val resolvedIconBg = if (iconBackgroundColor != Color.Unspecified) iconBackgroundColor else MaterialTheme.colorScheme.surfaceVariant
-  val resolvedIconTint = if (iconTintColor != Color.Unspecified) iconTintColor else MaterialTheme.colorScheme.onSurfaceVariant
+  val resolvedContainer = if (containerColor != Color.Unspecified) containerColor else CardSurfaceWhite
+  val resolvedContent = if (contentColor != Color.Unspecified) contentColor else TextInkPrimary
+  val resolvedIconBg = if (iconBackgroundColor != Color.Unspecified) iconBackgroundColor else SurfaceMuted
+  val resolvedIconTint = if (iconTintColor != Color.Unspecified) iconTintColor else DeepTealPrimary
 
   Card(
     modifier = modifier,
@@ -43,7 +43,7 @@ fun StatCard(
       containerColor = resolvedContainer,
       contentColor = resolvedContent
     ),
-    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+    border = BorderStroke(1.dp, BorderWarmGray),
     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp, pressedElevation = 3.dp),
     onClick = { onClick?.invoke() },
     enabled = onClick != null
@@ -72,13 +72,13 @@ fun StatCard(
             modifier = Modifier
               .size(28.dp)
               .clip(RoundedCornerShape(8.dp))
-              .background(iconBackgroundColor),
+              .background(resolvedIconBg),
             contentAlignment = Alignment.Center
           ) {
             Icon(
               imageVector = icon,
               contentDescription = null,
-              tint = iconTintColor,
+              tint = resolvedIconTint,
               modifier = Modifier.size(15.dp)
             )
           }
@@ -91,7 +91,7 @@ fun StatCard(
         text = value,
         style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.Bold,
-        color = contentColor,
+        color = resolvedContent,
         fontSize = 20.sp
       )
 

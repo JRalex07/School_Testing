@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,7 +46,14 @@ fun ReportsScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Financial Reports & Ledger", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextInkPrimary) },
+        title = {
+          Text(
+            "Financial Reports & Ledger",
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = TextInkPrimary
+          )
+        },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = CardSurfaceWhite)
       )
     }
@@ -55,8 +64,12 @@ fun ReportsScreen(
         .padding(innerPadding)
         .background(WarmIvoryBackground)
     ) {
-      // Tab selector
-      PrimaryTabRow(selectedTabIndex = selectedTab) {
+      // Tab selector with DeepTeal indicator
+      PrimaryTabRow(
+        selectedTabIndex = selectedTab,
+        containerColor = CardSurfaceWhite,
+        contentColor = DeepTealPrimary
+      ) {
         Tab(
           selected = selectedTab == 0,
           onClick = { selectedTab = 0 },
@@ -128,14 +141,15 @@ private fun MonthlyReportTab(
     // Period selector chip row
     item {
       Column {
-        Text("Select Month", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Select Month", style = MaterialTheme.typography.labelSmall, color = TextSecondaryMuted)
         Spacer(modifier = Modifier.height(4.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
           items(availablePeriods) { p ->
             FilterChip(
               selected = selectedPeriod == p,
               onClick = { onSelectPeriod(p) },
-              label = { Text(DateUtils.formatShortPeriod(p)) }
+              label = { Text(DateUtils.formatShortPeriod(p), fontSize = 12.sp) },
+              shape = RoundedCornerShape(50)
             )
           }
         }
@@ -146,16 +160,18 @@ private fun MonthlyReportTab(
     item {
       Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+        border = BorderStroke(1.dp, BorderWarmGray),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
       ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
           Text(
             text = "COLLECTION PERFORMANCE - ${DateUtils.formatDisplayPeriod(selectedPeriod).uppercase()}",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = DeepTealPrimary,
+            letterSpacing = 0.5.sp
           )
 
           Spacer(modifier = Modifier.height(12.dp))
@@ -165,9 +181,9 @@ private fun MonthlyReportTab(
           ReportDataRow("Total Pending", FormatUtils.formatCurrency(totalPending, currencySymbol), textColor = StatusDue)
           ReportDataRow("Overdue Amount", FormatUtils.formatCurrency(overdueAmount, currencySymbol), textColor = StatusOverdue)
 
-          Spacer(modifier = Modifier.height(8.dp))
-          HorizontalDivider()
-          Spacer(modifier = Modifier.height(8.dp))
+          Spacer(modifier = Modifier.height(10.dp))
+          HorizontalDivider(color = BorderWarmGray.copy(alpha = 0.6f))
+          Spacer(modifier = Modifier.height(10.dp))
 
           ReportDataRow("Students Paid in Full", "$paidCount students")
           ReportDataRow("Students Partially Paid", "$partialCount students")
@@ -181,29 +197,31 @@ private fun MonthlyReportTab(
       Text(
         text = "Student Ledger for ${DateUtils.formatDisplayPeriod(selectedPeriod)}",
         style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold
+        fontWeight = FontWeight.Bold,
+        color = TextInkPrimary
       )
     }
 
     items(recordsForPeriod) { rec ->
       Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+        border = BorderStroke(1.dp, BorderWarmGray)
       ) {
         Row(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(12.dp),
+            .padding(14.dp),
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
           Column {
-            Text(rec.studentName, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(rec.studentName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextInkPrimary)
             Text(
               "Net: ${FormatUtils.formatCurrency(rec.netFee, currencySymbol)} • Paid: ${FormatUtils.formatCurrency(rec.paidAmount, currencySymbol)}",
               fontSize = 12.sp,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
+              color = TextSecondaryMuted
             )
           }
           Column(horizontalAlignment = Alignment.End) {
@@ -213,7 +231,7 @@ private fun MonthlyReportTab(
               fontSize = 13.sp,
               color = if (rec.remainingAmount > 0) StatusOverdue else StatusPaid
             )
-            Text(rec.status.label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(rec.status.label, fontSize = 11.sp, color = TextSecondaryMuted)
           }
         }
       }
@@ -240,28 +258,31 @@ private fun PaymentMethodReportTab(
 
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 80.dp),
+    contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 100.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp)
   ) {
     item {
       Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+        border = BorderStroke(1.dp, BorderWarmGray),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
       ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
           Text(
-            text = "PAYMENT METHOD DISTRIBUTION",
+            text = "PAYMENT METHOD DISTRIBUTION (INR)",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = DeepTealPrimary,
+            letterSpacing = 0.5.sp
           )
           Spacer(modifier = Modifier.height(6.dp))
           Text(
-            text = "Total All-Time Collections: ${FormatUtils.formatCurrency(total, currencySymbol)}",
+            text = "Total Collections: ${FormatUtils.formatCurrency(total, currencySymbol)}",
             fontWeight = FontWeight.Bold,
-            fontSize = 16.sp
+            fontSize = 18.sp,
+            color = TextInkPrimary
           )
         }
       }
@@ -270,8 +291,9 @@ private fun PaymentMethodReportTab(
     items(methodGroups) { (method, sum, percent) ->
       Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+        border = BorderStroke(1.dp, BorderWarmGray)
       ) {
         Column(modifier = Modifier.padding(14.dp)) {
           Row(
@@ -279,12 +301,12 @@ private fun PaymentMethodReportTab(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Text(method.label, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(method.label, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextInkPrimary)
             Text(
               "${FormatUtils.formatCurrency(sum, currencySymbol)} (${percent.toInt()}%)",
               fontWeight = FontWeight.Bold,
               fontSize = 15.sp,
-              color = MaterialTheme.colorScheme.primary
+              color = DeepTealPrimary
             )
           }
           Spacer(modifier = Modifier.height(8.dp))
@@ -292,9 +314,10 @@ private fun PaymentMethodReportTab(
             progress = { (percent / 100f).toFloat().coerceIn(0f, 1f) },
             modifier = Modifier
               .fillMaxWidth()
-              .height(6.dp)
-              .clip(RoundedCornerShape(3.dp)),
-            color = BrandBluePrimary
+              .height(8.dp)
+              .clip(RoundedCornerShape(4.dp)),
+            color = DeepTealPrimary,
+            trackColor = SurfaceMuted
           )
         }
       }
@@ -317,20 +340,28 @@ private fun DailyTimelineReportTab(
 
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 80.dp),
+    contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 100.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp)
   ) {
     if (dateGroups.isEmpty()) {
       item {
-        Text("No completed payments to analyze yet.", modifier = Modifier.padding(16.dp))
+        Card(
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(18.dp),
+          colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+          border = BorderStroke(1.dp, BorderWarmGray)
+        ) {
+          Text("No completed payments to analyze yet.", modifier = Modifier.padding(20.dp), color = TextSecondaryMuted)
+        }
       }
     } else {
       items(dateGroups) { (date, paymentList) ->
         val dayTotal = paymentList.sumOf { it.amount }
         Card(
           modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(12.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+          shape = RoundedCornerShape(16.dp),
+          colors = CardDefaults.cardColors(containerColor = CardSurfaceWhite),
+          border = BorderStroke(1.dp, BorderWarmGray)
         ) {
           Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -341,7 +372,8 @@ private fun DailyTimelineReportTab(
               Text(
                 text = DateUtils.formatDisplayDate(date),
                 fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
+                fontSize = 15.sp,
+                color = TextInkPrimary
               )
               Text(
                 text = FormatUtils.formatCurrency(dayTotal, currencySymbol),
@@ -352,7 +384,7 @@ private fun DailyTimelineReportTab(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider()
+            HorizontalDivider(color = BorderWarmGray.copy(alpha = 0.6f))
             Spacer(modifier = Modifier.height(8.dp))
 
             paymentList.forEach { p ->
@@ -365,12 +397,13 @@ private fun DailyTimelineReportTab(
                 Text(
                   text = "${p.studentName} (${p.paymentMethod.label})",
                   fontSize = 12.sp,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                  color = TextSecondaryMuted
                 )
                 Text(
                   text = FormatUtils.formatCurrency(p.amount, currencySymbol),
                   fontSize = 12.sp,
-                  fontWeight = FontWeight.SemiBold
+                  fontWeight = FontWeight.SemiBold,
+                  color = TextInkPrimary
                 )
               }
             }
@@ -385,7 +418,7 @@ private fun DailyTimelineReportTab(
 private fun ReportDataRow(
   label: String,
   value: String,
-  textColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
+  textColor: Color = TextInkPrimary,
   isBold: Boolean = false
 ) {
   Row(
@@ -394,7 +427,7 @@ private fun ReportDataRow(
       .padding(vertical = 4.dp),
     horizontalArrangement = Arrangement.SpaceBetween
   ) {
-    Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(text = label, style = MaterialTheme.typography.bodyMedium, color = TextSecondaryMuted)
     Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = if (isBold) FontWeight.Bold else FontWeight.Medium, color = textColor)
   }
 }

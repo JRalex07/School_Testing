@@ -268,7 +268,7 @@ fun PendingFeesScreen(
                     )
                     if (studentObj != null) {
                       Text(
-                        text = "${studentObj.studentClass} • Contact: ${studentObj.parentContact.ifBlank { studentObj.phoneNumber }}",
+                        text = "${studentObj.studentClass} • Parent Contact: ${studentObj.parentContact.ifBlank { studentObj.phoneNumber }}",
                         fontSize = 11.sp,
                         color = TextSecondaryMuted
                       )
