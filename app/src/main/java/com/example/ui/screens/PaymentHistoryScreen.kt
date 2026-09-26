@@ -196,7 +196,7 @@ fun PaymentHistoryScreen(
               contentAlignment = Alignment.Center
             ) {
               Icon(
-                Icons.AutoMirrored.Filled.ReceiptLong,
+                Icons.Default.Receipt,
                 contentDescription = null,
                 modifier = Modifier.size(32.dp),
                 tint = TextSecondaryMuted

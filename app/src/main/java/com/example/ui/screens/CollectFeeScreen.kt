@@ -166,7 +166,7 @@ fun CollectFeeScreen(
             if (isSubmitting) {
               CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
             } else {
-              Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, modifier = Modifier.size(20.dp))
+              Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(20.dp))
               Spacer(modifier = Modifier.width(8.dp))
               Text("Record Payment & Generate Receipt", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
