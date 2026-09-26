@@ -7,7 +7,6 @@ import com.example.data.local.StudentDao
 import com.example.data.model.*
 import com.example.util.DateUtils
 import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.PersistentCacheSettings
@@ -67,23 +66,27 @@ class TuitionRepository(private val context: Context) {
   private fun initializeFirebase() {
     try {
       if (FirebaseApp.getApps(context).isEmpty()) {
-        val options = FirebaseOptions.Builder()
-          .setApplicationId("com.aistudio.tuitionfee.xkpdvy")
-          .setProjectId("tuition-fee-manager")
-          .setApiKey("AIzaSyFakeKeyForLocalFirestoreOfflineCache")
-          .build()
-        FirebaseApp.initializeApp(context, options)
+        try {
+          FirebaseApp.initializeApp(context)
+        } catch (e: Exception) {
+          Log.i(TAG, "Firebase not yet initialized from google-services.json: ${e.message}")
+        }
       }
-      val db = FirebaseFirestore.getInstance()
-      val settings = FirebaseFirestoreSettings.Builder()
-        .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
-        .build()
-      db.firestoreSettings = settings
-      firestore = db
-      _isFirestoreConnected.value = true
-      Log.d(TAG, "Firebase Firestore initialized successfully with offline persistence")
+      if (FirebaseApp.getApps(context).isNotEmpty()) {
+        val db = FirebaseFirestore.getInstance()
+        val settings = FirebaseFirestoreSettings.Builder()
+          .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
+          .build()
+        db.firestoreSettings = settings
+        firestore = db
+        _isFirestoreConnected.value = true
+        Log.d(TAG, "Firebase Firestore initialized successfully with offline persistence")
+      } else {
+        _isFirestoreConnected.value = false
+        Log.i(TAG, "Running in local offline database mode (Room SQLite). Add google-services.json to connect Firebase cloud sync.")
+      }
     } catch (e: Exception) {
-      Log.w(TAG, "Firestore initialization notice: ${e.message}. Using resilient persistent repository.")
+      Log.w(TAG, "Firestore initialization notice: ${e.message}. Using resilient local database.")
       _isFirestoreConnected.value = false
     }
   }
@@ -98,31 +101,10 @@ class TuitionRepository(private val context: Context) {
       // Observe Room StudentDao for local database updates
       launch {
         studentDao.getAllStudents().collect { localStudents ->
-          if (localStudents.isNotEmpty()) {
-            _students.value = localStudents
-          }
+          _students.value = localStudents
         }
       }
-
-      val prefs = context.getSharedPreferences("tuition_prefs", Context.MODE_PRIVATE)
-      val hasSeeded = prefs.getBoolean("has_seeded_sample_data", false)
-
-      if (!hasSeeded) {
-        seedRealisticSampleData()
-        prefs.edit().putBoolean("has_seeded_sample_data", true).apply()
-      } else {
-        loadFromLocalStorage()
-      }
       _isLoading.value = false
-    }
-  }
-
-  private fun loadFromLocalStorage() {
-    // If SharedPreferences has saved items, parse or restore
-    val prefs = context.getSharedPreferences("tuition_data", Context.MODE_PRIVATE)
-    // If empty for some reason, re-seed
-    if (_students.value.isEmpty()) {
-      seedRealisticSampleData()
     }
   }
 
@@ -663,205 +645,6 @@ class TuitionRepository(private val context: Context) {
    * Seed realistic sample data so the tutor immediately sees the dashboard fully functional,
    * showing active/inactive students, paid, partially paid, overdue, and advance accounts.
    */
-  private fun seedRealisticSampleData() {
-    val currentP = DateUtils.currentPeriod()
-    val prevP = DateUtils.previousPeriod(currentP)
-    val nextP = DateUtils.nextPeriod(currentP)
-
-    val s1 = Student(
-      id = "stu_01",
-      studentId = "STU-2026-001",
-      name = "Aarav Sharma",
-      fatherName = "Vikram Sharma",
-      motherName = "Pooja Sharma",
-      phoneNumber = "9810123456",
-      parentContact = "9810123457",
-      address = "B-42, Sector 15, Noida",
-      joiningDate = "2026-01-10",
-      status = StudentStatus.ACTIVE,
-      monthlyFeeAmount = 1500.0,
-      feeStartDate = "2026-01-01",
-      preferredPaymentDay = 5,
-      studentClass = "Class 10",
-      subjects = listOf("Mathematics", "Science"),
-      batch = "Evening Batch A (5 PM)",
-      tuitionTiming = "5:00 PM - 6:30 PM",
-      advanceBalance = 0.0
-    )
-
-    val s2 = Student(
-      id = "stu_02",
-      studentId = "STU-2026-002",
-      name = "Ananya Verma",
-      fatherName = "Ramesh Verma",
-      motherName = "Sunita Verma",
-      phoneNumber = "9820234567",
-      parentContact = "9820234568",
-      address = "C-12, Green Park, Delhi",
-      joiningDate = "2026-02-01",
-      status = StudentStatus.ACTIVE,
-      monthlyFeeAmount = 2000.0,
-      feeStartDate = "2026-02-01",
-      preferredPaymentDay = 10,
-      studentClass = "Class 12",
-      subjects = listOf("Physics", "Chemistry", "Maths"),
-      batch = "Morning Batch (7 AM)",
-      tuitionTiming = "7:00 AM - 8:30 AM",
-      advanceBalance = 500.0
-    )
-
-    val s3 = Student(
-      id = "stu_03",
-      studentId = "STU-2026-003",
-      name = "Rohan Mehta",
-      fatherName = "Suresh Mehta",
-      motherName = "Kavita Mehta",
-      phoneNumber = "9830345678",
-      parentContact = "9830345679",
-      address = "402, Sunshine Apts, Mayur Vihar",
-      joiningDate = "2026-03-05",
-      status = StudentStatus.ACTIVE,
-      monthlyFeeAmount = 1800.0,
-      feeStartDate = "2026-03-01",
-      preferredPaymentDay = 10,
-      studentClass = "Class 11",
-      subjects = listOf("Commerce", "Accountancy"),
-      batch = "Evening Batch B (6:30 PM)",
-      tuitionTiming = "6:30 PM - 8:00 PM",
-      advanceBalance = 0.0
-    )
-
-    val s4 = Student(
-      id = "stu_04",
-      studentId = "STU-2026-004",
-      name = "Diya Patel",
-      fatherName = "Ketan Patel",
-      motherName = "Bhavna Patel",
-      phoneNumber = "9840456789",
-      parentContact = "9840456780",
-      address = "Tower 4, Express View, Sector 93",
-      joiningDate = "2026-04-15",
-      status = StudentStatus.ACTIVE,
-      monthlyFeeAmount = 1200.0,
-      discount = 200.0,
-      discountType = DiscountType.FIXED,
-      feeStartDate = "2026-04-01",
-      preferredPaymentDay = 15,
-      studentClass = "Class 9",
-      subjects = listOf("Mathematics", "English"),
-      batch = "Afternoon Batch (4 PM)",
-      tuitionTiming = "4:00 PM - 5:00 PM",
-      advanceBalance = 1000.0
-    )
-
-    val s5 = Student(
-      id = "stu_05",
-      studentId = "STU-2026-005",
-      name = "Kabir Singh",
-      fatherName = "Gurpreet Singh",
-      motherName = "Jaspreet Kaur",
-      phoneNumber = "9850567890",
-      parentContact = "9850567891",
-      address = "12-A, Indirapuram, Ghaziabad",
-      joiningDate = "2026-01-20",
-      status = StudentStatus.LEFT,
-      leavingDate = "2026-08-31",
-      leavingReason = "Relocated to Chandigarh",
-      settlementStatus = SettlementStatus.FULLY_SETTLED,
-      monthlyFeeAmount = 1500.0,
-      studentClass = "Class 10",
-      batch = "Evening Batch A (5 PM)"
-    )
-
-    val sampleStudents = listOf(s1, s2, s3, s4, s5)
-    _students.value = sampleStudents
-    CoroutineScope(Dispatchers.IO).launch {
-      studentDao.insertStudents(sampleStudents)
-    }
-
-    // Fee records for s1 (Aarav - Paid for current month)
-    val f1_prev = FeeRecord("FEE_stu01_$prevP", s1.id, s1.fullName, prevP, 1500.0, 0.0, null, 1500.0, 1500.0, 0.0, "$prevP-05", FeeStatus.PAID)
-    val f1_cur = FeeRecord("FEE_stu01_$currentP", s1.id, s1.fullName, currentP, 1500.0, 0.0, null, 1500.0, 1500.0, 0.0, "$currentP-05", FeeStatus.PAID)
-
-    // Fee records for s2 (Ananya - Partially paid this month: ₹1000 paid out of ₹2000)
-    val f2_prev = FeeRecord("FEE_stu02_$prevP", s2.id, s2.fullName, prevP, 2000.0, 0.0, null, 2000.0, 2000.0, 0.0, "$prevP-10", FeeStatus.PAID)
-    val f2_cur = FeeRecord("FEE_stu02_$currentP", s2.id, s2.fullName, currentP, 2000.0, 0.0, null, 2000.0, 1000.0, 1000.0, "$currentP-10", FeeStatus.PARTIALLY_PAID)
-
-    // Fee records for s3 (Rohan - Overdue for current month, also unpaid previous month = Arrears)
-    val f3_prev = FeeRecord("FEE_stu03_$prevP", s3.id, s3.fullName, prevP, 1800.0, 0.0, null, 1800.0, 0.0, 1800.0, "$prevP-10", FeeStatus.OVERDUE)
-    val f3_cur = FeeRecord("FEE_stu03_$currentP", s3.id, s3.fullName, currentP, 1800.0, 0.0, null, 1800.0, 0.0, 1800.0, "$currentP-10", FeeStatus.OVERDUE)
-
-    // Fee records for s4 (Diya - Advance covered)
-    val f4_cur = FeeRecord("FEE_stu04_$currentP", s4.id, s4.fullName, currentP, 1200.0, 200.0, "Sibling concession", 1000.0, 1000.0, 0.0, "$currentP-15", FeeStatus.PAID)
-    val f4_next = FeeRecord("FEE_stu04_$nextP", s4.id, s4.fullName, nextP, 1200.0, 200.0, "Sibling concession", 1000.0, 0.0, 1000.0, "$nextP-15", FeeStatus.NOT_DUE)
-
-    _feeRecords.value = listOf(f1_prev, f1_cur, f2_prev, f2_cur, f3_prev, f3_cur, f4_cur, f4_next)
-
-    // Payments
-    val p1 = Payment(
-      id = "PAY_01",
-      receiptNumber = "REC-2026-0001",
-      studentId = s1.id,
-      studentName = s1.fullName,
-      studentClass = s1.studentClass,
-      amount = 1500.0,
-      paymentDate = DateUtils.currentDateString(),
-      paymentMethod = PaymentMethod.UPI,
-      transactionReference = "UPI/9810123/99281",
-      allocatedFeePeriods = listOf(currentP),
-      allocatedAmounts = mapOf(currentP to 1500.0),
-      status = PaymentRecordStatus.COMPLETED,
-      notes = "GPay payment verified",
-      balanceAfterPayment = 0.0
-    )
-
-    val p2 = Payment(
-      id = "PAY_02",
-      receiptNumber = "REC-2026-0002",
-      studentId = s2.id,
-      studentName = s2.fullName,
-      studentClass = s2.studentClass,
-      amount = 1000.0,
-      paymentDate = DateUtils.currentDateString(),
-      paymentMethod = PaymentMethod.CASH,
-      allocatedFeePeriods = listOf(currentP),
-      allocatedAmounts = mapOf(currentP to 1000.0),
-      status = PaymentRecordStatus.COMPLETED,
-      notes = "Part 1 received in cash",
-      balanceAfterPayment = 1000.0
-    )
-
-    val p3 = Payment(
-      id = "PAY_03",
-      receiptNumber = "REC-2026-0003",
-      studentId = s4.id,
-      studentName = s4.fullName,
-      studentClass = s4.studentClass,
-      amount = 2000.0,
-      paymentDate = DateUtils.currentDateString(),
-      paymentMethod = PaymentMethod.BANK_TRANSFER,
-      transactionReference = "IMPS-938201",
-      allocatedFeePeriods = listOf(currentP, "ADVANCE"),
-      allocatedAmounts = mapOf(currentP to 1000.0, "ADVANCE" to 1000.0),
-      status = PaymentRecordStatus.COMPLETED,
-      notes = "Paid current month + ₹1000 advance",
-      balanceAfterPayment = 0.0
-    )
-
-    _payments.value = listOf(p1, p2, p3)
-
-    recordAuditLog("SYSTEM_INIT", "Tuition Fee Manager initial financial ledger created", null)
-  }
-
-  suspend fun resetToSampleData(): Result<Unit> = withContext(Dispatchers.IO) {
-    try {
-      seedRealisticSampleData()
-      Result.success(Unit)
-    } catch (e: Exception) {
-      Result.failure(e)
-    }
-  }
-
   suspend fun clearAllData(): Result<Unit> = withContext(Dispatchers.IO) {
     try {
       studentDao.deleteAllStudents()
@@ -870,6 +653,8 @@ class TuitionRepository(private val context: Context) {
       _payments.value = emptyList()
       _refunds.value = emptyList()
       _auditLogs.value = emptyList()
+      val prefs = context.getSharedPreferences("tuition_prefs", Context.MODE_PRIVATE)
+      prefs.edit().clear().apply()
       recordAuditLog("DATA_RESET", "Ledger cleared by user", null)
       Result.success(Unit)
     } catch (e: Exception) {

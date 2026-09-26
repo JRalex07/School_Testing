@@ -37,7 +37,6 @@ fun SettingsScreen(
   var currencySymbol by remember(profile) { mutableStateOf(profile.currencySymbol) }
   var receiptFooter by remember(profile) { mutableStateOf(profile.receiptFooterNote) }
 
-  var showResetDialog by remember { mutableStateOf(false) }
   var showClearDialog by remember { mutableStateOf(false) }
 
   val scrollState = rememberScrollState()
@@ -226,42 +225,22 @@ fun SettingsScreen(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Text("Data & Ledger Controls", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
           Text(
-            "Use these controls to reset demo students or clear local transaction records.",
+            "Use this control to wipe all local transaction and student records if you wish to reset your ledger.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
 
-          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-              onClick = { showResetDialog = true },
-              modifier = Modifier.weight(1f),
-              shape = RoundedCornerShape(8.dp)
-            ) {
-              Text("Reload Demo Data", fontSize = 12.sp)
-            }
-
-            Button(
-              onClick = { showClearDialog = true },
-              modifier = Modifier.weight(1f),
-              colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-              shape = RoundedCornerShape(8.dp)
-            ) {
-              Text("Clear All Data", fontSize = 12.sp)
-            }
+          Button(
+            onClick = { showClearDialog = true },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            shape = RoundedCornerShape(8.dp)
+          ) {
+            Text("Clear All Data", fontSize = 13.sp)
           }
         }
       }
     }
-  }
-
-  if (showResetDialog) {
-    ConfirmDialog(
-      title = "Reload Sample Data?",
-      message = "This will restore the realistic demonstration students and fee records. Current changes will be overwritten.",
-      confirmButtonText = "Reload Sample",
-      onConfirm = { viewModel.resetToSampleData() },
-      onDismiss = { showResetDialog = false }
-    )
   }
 
   if (showClearDialog) {

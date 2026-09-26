@@ -53,8 +53,11 @@ jobs:
 
       - name: Prepare Signing Keystores (Release & Debug)
         id: setup_keystore
+        env:
+          INPUT_STORE_PASS: ${{ secrets.STORE_PASSWORD }}
+          INPUT_KEY_PASS: ${{ secrets.KEY_PASSWORD }}
         run: |
-          # 1. Setup debug.keystore (required by debugConfig)
+          # 1. Setup debug.keystore (required for debug builds)
           if [ -f "debug.keystore.base64" ]; then
             echo "Decoding debug.keystore from debug.keystore.base64..."
             base64 --decode debug.keystore.base64 > debug.keystore
@@ -77,8 +80,8 @@ jobs:
             echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > my-upload-key.jks
           elif [ ! -f "my-upload-key.jks" ]; then
             echo "Generating release keystore for build artifact..."
-            STORE_PASS="${{ secrets.STORE_PASSWORD || 'android123' }}"
-            KEY_PASS="${{ secrets.KEY_PASSWORD || 'android123' }}"
+            STORE_PASS="${INPUT_STORE_PASS:-android123}"
+            KEY_PASS="${INPUT_KEY_PASS:-android123}"
             keytool -genkeypair -v \
               -keystore my-upload-key.jks \
               -alias upload \
@@ -98,33 +101,54 @@ jobs:
         run: |
           ./gradlew assembleRelease assembleDebug --stacktrace
 
-      - name: Inspect Build Artifacts
+      - name: Prepare APK Release Artifacts
         run: |
-          echo "Listing generated APKs:"
+          mkdir -p release-artifacts
+          echo "Inspecting build outputs:"
           ls -la app/build/outputs/apk/release/ || true
           ls -la app/build/outputs/apk/debug/ || true
+
+          # Find release APK and copy with standard names
+          REL_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -n "$REL_APK" ]; then
+            echo "Found Release APK: $REL_APK"
+            cp "$REL_APK" release-artifacts/TuitionFeeManager-Release.apk
+            cp "$REL_APK" release-artifacts/app-release.apk
+          fi
+
+          # Find debug APK and copy with standard names
+          DBG_APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          if [ -n "$DBG_APK" ]; then
+            echo "Found Debug APK: $DBG_APK"
+            cp "$DBG_APK" release-artifacts/TuitionFeeManager-Debug.apk
+            cp "$DBG_APK" release-artifacts/app-debug.apk
+          fi
+
+          echo "Final release artifacts:"
+          ls -la release-artifacts/
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: tuition-ledger-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: release-artifacts/*Release.apk
           retention-days: 30
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: tuition-ledger-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: release-artifacts/*Debug.apk
           retention-days: 14
 
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_release == 'true'
+      - name: Create or Update GitHub Release
+        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('Tuition Fee Manager v1.0.{0}', github.run_number) }}
+          files: release-artifacts/*.apk
           generate_release_notes: true
           draft: false
           prerelease: false
+          make_latest: true

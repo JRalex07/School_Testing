@@ -298,15 +298,6 @@ class TuitionViewModel(application: Application) : AndroidViewModel(application)
     }
   }
 
-  fun resetToSampleData() {
-    viewModelScope.launch {
-      val res = repository.resetToSampleData()
-      res.onSuccess {
-        _uiMessage.emit("Sample data loaded successfully.")
-      }
-    }
-  }
-
   fun clearAllData() {
     viewModelScope.launch {
       val res = repository.clearAllData()

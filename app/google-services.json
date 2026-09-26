@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "406689542862",
+    "project_id": "tutorfee-83839",
+    "storage_bucket": "tutorfee-83839.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:406689542862:android:4c09dd4a63e582c560569f",
+        "android_client_info": {
+          "package_name": "com.managment.tutorfee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBoIUn_WyWXWyZtTVa3uIt8_jvPbXYW2bE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
