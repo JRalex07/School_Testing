@@ -1,0 +1,204 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && (
+        request.auth.token.role == role ||
+        getUserData().role == role
+      );
+    }
+
+    function isPrincipal() {
+      return hasRole('principal');
+    }
+
+    function isAccountant() {
+      return hasRole('accountant') || hasRole('feeClerk');
+    }
+
+    function isTeacher() {
+      return hasRole('teacher') || hasRole('vicePrincipal');
+    }
+
+    function isParent() {
+      return hasRole('parent');
+    }
+
+    // Teacher assignment lookup: verifies explicit assignment to class and section
+    function isAssignedToClass(classId, sectionId) {
+      return isTeacher() && exists(/databases/$(database)/documents/teacherAssignments/$(request.auth.uid + '_' + classId + '_' + sectionId));
+    }
+
+    // Teacher assignment lookup for a specific subject
+    function isAssignedToSubject(classId, sectionId, subjectId) {
+      return isTeacher() && (
+        exists(/databases/$(database)/documents/teacherAssignments/$(request.auth.uid + '_' + classId + '_' + sectionId + '_' + subjectId)) ||
+        // Or if the teacher is designated Class Teacher
+        (exists(/databases/$(database)/documents/teacherAssignments/$(request.auth.uid + '_' + classId + '_' + sectionId)) &&
+         get(/databases/$(database)/documents/teacherAssignments/$(request.auth.uid + '_' + classId + '_' + sectionId)).data.isClassTeacher == true)
+      );
+    }
+
+    // ==========================================
+    // 1. User Profiles & Roles (Rules 3, 4, 5)
+    // ==========================================
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isPrincipal());
+      // Only Principal can create, update, or assign roles. Users cannot escalate their own role.
+      allow create, update: if isPrincipal() && (request.resource.data.role != null);
+      // Users can update non-privileged personal info on their own doc
+      allow update: if isAuthenticated() && request.auth.uid == userId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isApproved', 'permissions', 'customClaims']);
+      allow delete: if isPrincipal();
+    }
+
+    // ==========================================
+    // 2. Teacher Assignments (Rules 4, 5, 7)
+    // ==========================================
+    match /teacherAssignments/{assignmentId} {
+      allow read: if isPrincipal() || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      allow write: if isPrincipal();
+    }
+
+    // ==========================================
+    // 3. Students Collection (Rules 4, 5, 6)
+    // Direct ID bypass prevented: teacher must be assigned to student's class/section.
+    // ==========================================
+    match /students/{studentId} {
+      allow read: if isPrincipal() ||
+        (isParent() && request.auth.uid in resource.data.parentUserIds) ||
+        isAssignedToClass(resource.data.classId, resource.data.section);
+
+      // Only Principal/Admin can create, update, transfer, or delete students
+      allow create, update, delete: if isPrincipal();
+    }
+
+    // ==========================================
+    // 4. Attendance Records (Rule 9)
+    // ==========================================
+    match /attendance/{attendanceId} {
+      allow read: if isPrincipal() ||
+        isAssignedToClass(resource.data.classId, resource.data.section) ||
+        (isParent() && request.auth.uid in get(/databases/$(database)/documents/students/$(resource.data.studentId)).data.parentUserIds);
+
+      allow create: if isPrincipal() || (
+        isAssignedToClass(request.resource.data.classId, request.resource.data.section) &&
+        request.resource.data.markedByUserId == request.auth.uid
+      );
+
+      allow update: if isPrincipal() || (
+        isAssignedToClass(resource.data.classId, resource.data.section) &&
+        request.resource.data.lastChangedByUserId == request.auth.uid
+      );
+
+      allow delete: if isPrincipal();
+    }
+
+    // ==========================================
+    // 5. Academic Marks (Rules 7, 9)
+    // Subject-level teacher permissions enforced.
+    // ==========================================
+    match /marks/{markId} {
+      allow read: if isPrincipal() ||
+        isAssignedToSubject(resource.data.classId, resource.data.section, resource.data.subjectId) ||
+        (isParent() && resource.data.isPublished == true &&
+         request.auth.uid in get(/databases/$(database)/documents/students/$(resource.data.studentId)).data.parentUserIds);
+
+      allow create: if isPrincipal() || (
+        isAssignedToSubject(request.resource.data.classId, request.resource.data.section, request.resource.data.subjectId) &&
+        request.resource.data.isPublished == false
+      );
+
+      allow update: if isPrincipal() || (
+        isAssignedToSubject(resource.data.classId, resource.data.section, resource.data.subjectId) &&
+        // Teachers cannot unilaterally publish results or edit once published
+        resource.data.isPublished == false &&
+        request.resource.data.isPublished == false
+      );
+
+      allow delete: if isPrincipal();
+    }
+
+    // ==========================================
+    // 6. Fees & Invoices (Rule 8)
+    // Teachers are strictly forbidden from modifying or creating fees.
+    // ==========================================
+    match /fees/{feeId} {
+      allow read: if isPrincipal() || isAccountant() ||
+        (isParent() && request.auth.uid in get(/databases/$(database)/documents/students/$(resource.data.studentId)).data.parentUserIds);
+
+      allow create, update, delete: if isPrincipal() || isAccountant();
+    }
+
+    // ==========================================
+    // 7. Payments & Receipts (Rule 8 - Manual / Offline)
+    // ==========================================
+    match /payments/{paymentId} {
+      allow read: if isPrincipal() || isAccountant() ||
+        (isParent() && request.auth.uid in get(/databases/$(database)/documents/students/$(resource.data.studentId)).data.parentUserIds);
+
+      allow create: if (isPrincipal() || isAccountant()) &&
+        request.resource.data.recordedByUserId == request.auth.uid &&
+        request.resource.data.amount > 0;
+
+      // Reversals require Principal/Accountant authority and audit reason
+      allow update: if (isPrincipal() || isAccountant()) &&
+        request.resource.data.isReversed == true &&
+        request.resource.data.reversalReason != null;
+
+      allow delete: if false; // Payments are strictly immutable, only reversible
+    }
+
+    // ==========================================
+    // 8. Homework & Learning Materials
+    // ==========================================
+    match /homework/{homeworkId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isPrincipal() ||
+        isAssignedToSubject(request.resource.data.classId, request.resource.data.section, request.resource.data.subjectId);
+      allow delete: if isPrincipal() ||
+        (isTeacher() && resource.data.teacherId == request.auth.uid);
+    }
+
+    // ==========================================
+    // 9. Leave Requests
+    // ==========================================
+    match /leaveRequests/{requestId} {
+      allow read: if isPrincipal() ||
+        (isParent() && resource.data.parentUserId == request.auth.uid) ||
+        isAssignedToClass(resource.data.classId, resource.data.section);
+
+      allow create: if isParent() && request.resource.data.parentUserId == request.auth.uid;
+      allow update: if isPrincipal() || isAssignedToClass(resource.data.classId, resource.data.section);
+      allow delete: if isPrincipal();
+    }
+
+    // ==========================================
+    // 10. Audit Logs (Rule 22)
+    // Append-only, immutable logs.
+    // ==========================================
+    match /auditLogs/{logId} {
+      allow read: if isPrincipal();
+      allow create: if isAuthenticated() && request.resource.data.actorUserId == request.auth.uid;
+      allow update, delete: if false; // Audit logs can NEVER be modified or deleted
+    }
+
+    // ==========================================
+    // 11. School Notices & Announcements
+    // ==========================================
+    match /notices/{noticeId} {
+      allow read: if isAuthenticated();
+      allow write: if isPrincipal();
+    }
+  }
+}

@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Role helpers
+    function isPrincipal() {
+      return request.auth.token.role == 'principal';
+    }
+
+    // School documents path structure: school/{schoolId}/...
+    match /school/{schoolId} {
+      match /notices/{noticeId}/{fileName} {
+        allow read: if isAuthenticated();
+        allow write: if isPrincipal() && request.resource.size < 10 * 1024 * 1024;
+      }
+
+      match /homework/{classId}/{subjectId}/{fileName} {
+        allow read: if isAuthenticated();
+        allow write: if (isPrincipal() || request.auth.token.role == 'teacher') &&
+          request.resource.size < 25 * 1024 * 1024;
+      }
+
+      match /receipts/{receiptId}/{fileName} {
+        allow read: if isAuthenticated();
+        allow write: if (isPrincipal() || request.auth.token.role == 'accountant') &&
+          request.resource.size < 5 * 1024 * 1024;
+      }
+
+      match /students/{studentId}/{fileName} {
+        allow read: if isAuthenticated();
+        allow write: if isPrincipal() && request.resource.size < 5 * 1024 * 1024;
+      }
+    }
+  }
+}

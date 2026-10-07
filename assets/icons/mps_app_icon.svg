@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#312E81" />
+      <stop offset="50%" stop-color="#4338CA" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+
+    <!-- Gold Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+
+    <!-- Shield Inner Gradient -->
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E1B4B" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.95" />
+    </linearGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Squircle Base Canvas -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bgGrad)" />
+
+  <!-- Subtle Inner Border -->
+  <rect x="8" y="8" width="496" height="496" rx="104" ry="104" fill="none" stroke="rgba(255, 255, 255, 0.15)" stroke-width="4" />
+
+  <!-- Academic Crest Shield -->
+  <g filter="url(#dropShadow)">
+    <path d="M 256 80 
+             C 340 80, 396 112, 400 132 
+             C 400 252, 356 360, 256 416 
+             C 156 360, 112 252, 112 132 
+             C 116 112, 172 80, 256 80 Z"
+          fill="url(#shieldGrad)"
+          stroke="url(#goldGrad)"
+          stroke-width="10"
+          stroke-linejoin="round" />
+  </g>
+
+  <!-- Academic Graduation Cap Emblem -->
+  <g transform="translate(256, 170)" fill="url(#goldGrad)">
+    <!-- Cap Top Diamond -->
+    <polygon points="0,-36 72,-8 0,20 -72,-8" />
+    <!-- Cap Skull Base -->
+    <path d="M -40,3 C -40,24 40,24 40,3 L 34,16 C 30,30 -30,30 -34,16 Z" opacity="0.95" />
+    <!-- Tassel String and Button -->
+    <circle cx="0" cy="-8" r="4.5" fill="#FFFFFF" />
+    <path d="M 0,-8 C 44,-2 60,18 64,38" fill="none" stroke="url(#goldGrad)" stroke-width="3.5" stroke-linecap="round" />
+    <!-- Tassel Fringe -->
+    <polygon points="62,38 66,38 68,54 60,54" />
+  </g>
+
+  <!-- Official "MPS" Bold Typographic Monogram -->
+  <text x="256" y="304"
+        text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="94"
+        font-weight="900"
+        letter-spacing="6"
+        fill="#FFFFFF">MPS</text>
+
+  <!-- Subtitle Tag: EXCELLENCE -->
+  <text x="256" y="344"
+        text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        font-size="16"
+        font-weight="700"
+        letter-spacing="9"
+        fill="#FCD34D"
+        opacity="0.95">SCHOOL</text>
+
+  <!-- Stars of Distinction -->
+  <g fill="url(#goldGrad)" transform="translate(256, 372)">
+    <!-- Center Star -->
+    <path d="M 0,-8 L 2.4,-2.4 L 8,-2.4 L 3.6,1.2 L 5.2,6.8 L 0,3.2 L -5.2,6.8 L -3.6,1.2 L -8,-2.4 L -2.4,-2.4 Z" />
+    <!-- Left Star -->
+    <path transform="translate(-28, 2) scale(0.75)" d="M 0,-8 L 2.4,-2.4 L 8,-2.4 L 3.6,1.2 L 5.2,6.8 L 0,3.2 L -5.2,6.8 L -3.6,1.2 L -8,-2.4 L -2.4,-2.4 Z" />
+    <!-- Right Star -->
+    <path transform="translate(28, 2) scale(0.75)" d="M 0,-8 L 2.4,-2.4 L 8,-2.4 L 8,-2.4 L 3.6,1.2 L 5.2,6.8 L 0,3.2 L -5.2,6.8 L -3.6,1.2 L -8,-2.4 L -2.4,-2.4 Z" />
+  </g>
+</svg>
