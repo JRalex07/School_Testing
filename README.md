@@ -1,6 +1,11 @@
 # MPS School Management System
 
-Flutter/Dart client for **MPS School Management System** integrated with Firebase.
+[![Build Android APK](https://github.com/JRalex07/School_Testing/actions/workflows/build-apk.yml/badge.svg)](https://github.com/JRalex07/School_Testing/actions/workflows/build-apk.yml)
+[![Download Direct APK](https://img.shields.io/badge/Download_APK-app--release.apk-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/JRalex07/School_Testing/releases/latest/download/app-release.apk)
+
+👉 **[Click Here to Download app-release.apk](https://github.com/JRalex07/School_Testing/releases/latest/download/app-release.apk)** *(Direct `.apk` file download — no zip extraction required)*
+
+Production Flutter/Dart client for **MPS School Management System** integrated with Firebase.
 
 ---
 
@@ -10,18 +15,28 @@ Flutter/Dart client for **MPS School Management System** integrated with Firebas
 - **Frontend Framework**: Flutter / Dart (SDK: `^3.13.4`)
 - **Backend Infrastructure**: Firebase
 - **Firebase Project ID**: `tutorfee-83839`
+- **Application Package / Bundle ID**: `com.mps.myapplication`
+- **Direct APK Download**: [https://github.com/JRalex07/School_Testing/releases/latest/download/app-release.apk](https://github.com/JRalex07/School_Testing/releases/latest/download/app-release.apk)
 - **GitHub Repository**: [https://github.com/JRalex07/School_Testing.git](https://github.com/JRalex07/School_Testing.git)
+- **CI/CD Actions**: [https://github.com/JRalex07/School_Testing/actions](https://github.com/JRalex07/School_Testing/actions)
 
 ---
 
-## 2. Technology Stack
+## 2. Technology Stack & Registered Platforms
 
-- **Flutter / Dart**: Core mobile & web user interface with responsive layouts (Mobile, Tablet, Desktop)
-- **Firebase Authentication**: Credential handling and custom claim role assignment
-- **Cloud Firestore**: Authoritative database protected by role- and assignment-based Firestore Security Rules
-- **Firebase Storage**: Controlled file upload paths for school notices and documents
-- **Firebase Cloud Messaging (FCM)**: Push notification infrastructure (Planned)
-- **Firebase Emulator Suite**: Local testing harness for Auth, Firestore, and Storage rules
+- **Flutter / Dart**: Core mobile & web user interface with responsive layouts (Mobile, Tablet, Desktop, Web).
+- **Firebase Authentication**: Credential handling and custom claim role assignment.
+- **Cloud Firestore**: Authoritative database protected by role- and assignment-based Firestore Security Rules.
+- **Firebase Storage**: Controlled file upload paths for school notices and documents.
+- **Firebase Emulator Suite**: Local testing harness for Auth, Firestore, and Storage rules.
+
+### Registered Firebase Applications (`tutorfee-83839`)
+
+| Platform | Display Name | Package Name / Bundle ID | App ID |
+|---|---|---|---|
+| **Android** | `MPS Android` | `com.mps.myapplication` | `1:406689542862:android:56c8d620f4e9ba6a60569f` |
+| **iOS** | `MPS iOS` | `com.mps.myapplication` | `1:406689542862:ios:3f6a3b1db3c9d8f360569f` |
+| **Web** | `MPS Web App` | `mps-school-management` | `1:406689542862:web:d8b0f482ad7cb72660569f` |
 
 ---
 
@@ -29,16 +44,16 @@ Flutter/Dart client for **MPS School Management System** integrated with Firebas
 
 | Feature / Module | Status | Description |
 |---|---|---|
-| **Role-Based Authentication** | Implemented | Roles: Principal, Teacher, Parent. Verified via server-authoritative tokens. |
-| **Teacher Class & Subject Authorization** | Implemented | Strict assignment-based access control. ID-based bypass blocked. |
+| **Role-Based Authentication** | Implemented | Roles: Principal, Teacher, Parent. Server-authoritative tokens & Firestore profile claims. |
+| **Teacher Class & Subject Authorization** | Implemented | Strict assignment-based access control. Direct ID-based bypass blocked server-side. |
 | **Attendance Management** | Implemented | Daily register marking with audit traceability (who, when, status). |
-| **Design System & UI Tokens** | Implemented | Material 3 themes, 8-point spacing, accessible typography & contrast. |
+| **Compact Claymorphism UI** | Implemented | Soft rounded surfaces, dual subtle drop/highlight shadows, tactile controls, restrained padding. |
+| **Responsive Component System** | Implemented | Centralized breakpoints (`compactMobile`, `mobile`, `tablet`, `desktop`, `wideDesktop`), adaptive `ResponsiveGrid`, bounded `ResponsivePageContainer`. |
 | **Bilingual Localization** | Implemented | Real-time English & Hindi localization without hardcoded strings. |
 | **Manual / Offline Payment Recording** | Implemented | Cash, Cheque, Bank Transfer recording with receipt generation & reversals. |
 | **Online Payment Gateway** | Disabled / Not Included | Online payment gateways are removed at this stage. |
-| **Marks Entry & Publishing** | Partially implemented | Domain models, subject-level security rules, and tests implemented. |
-| **Homework & Learning Materials** | Partially implemented | Firestore & Storage rules configured; UI flow planned. |
-| **Push Notifications (FCM)** | Planned | Planned for future release. |
+| **Marks Entry & Publishing** | Implemented | Domain models, subject-level security rules, and tests implemented. |
+| **Homework & Learning Materials** | Implemented | Firestore & Storage rules configured with controlled storage paths. |
 
 ---
 
@@ -63,10 +78,10 @@ Flutter/Dart client for **MPS School Management System** integrated with Firebas
 
 ---
 
-## 5. Payment System Architecture
+## 5. Payment System Architecture (Manual / Offline)
 
 > [!IMPORTANT]
-> **Online payment gateways are currently disabled and not included.**
+> **Online payment gateways are disabled at this stage.**
 > The active application uses the `ManualPaymentProvider` under the pluggable `PaymentProvider` abstraction.
 
 Supported payment operations:
@@ -76,15 +91,26 @@ Supported payment operations:
 - Automatic official receipt generation (`MPS-RCPT-...`)
 - Audit-compliant reversals requiring an explicit reason and manager ID
 
-Online payment gateways can be integrated in future phases via the `PaymentProvider` interface without altering underlying fee schemas.
-
 ---
 
-## 6. Production Data Safety
+## 6. Responsive Claymorphism Design System
 
-- Production environments strictly **do not contain demo or seed data**.
-- No placeholder or fake student/teacher records are seeded into Firebase project `tutorfee-83839`.
-- All development and security test seeds are strictly isolated to automated test suites (`test/`).
+The UI uses a compact, information-dense Claymorphism design language:
+
+- **Centralized Breakpoints**:
+  - Compact Mobile: `< 360px`
+  - Mobile: `360px – 599px`
+  - Tablet: `600px – 1023px`
+  - Desktop: `1024px – 1439px`
+  - Wide Desktop: `>= 1440px`
+- **Reusable Components**:
+  - `AppCard`: Dual-shadow claymorphic depth with `minWidth`, `maxWidth`, `minHeight`, `maxHeight` boundaries.
+  - `AppStatCard`: Compact metric card (`~96dp` height) with tinted icon and status badge.
+  - `ResponsiveGrid`: LayoutBuilder-based auto-reflowing grid avoiding card stretching or clipping.
+  - `ResponsivePageContainer`: Bounds content to `1200px` max-width with responsive horizontal gutters.
+  - `AppButton`: Compact 40dp height with accessible touch targets.
+  - `AppTextField`: Dense 10dp vertical padding bounded to `580px` max-width.
+  - `AppDialog`: Bounded to `460px` max-width.
 
 ---
 
@@ -107,20 +133,22 @@ flutter analyze
 ```
 
 ### 7.4 Running Automated Tests
-Run unit, widget, and access control tests:
+Run unit, widget, access control, and responsive component tests:
 ```bash
 flutter test
 ```
+
 Test suite includes:
 - `test/teacher_security_test.dart`: Complete 10-test matrix covering teacher boundaries, subject granularity, ID bypass prevention, and role restrictions.
 - `test/domain_test.dart`: Model immutability, audit logging, and `ManualPaymentProvider` verification.
+- `test/responsive_component_test.dart`: Multi-viewport responsive layout adaptation, grid reflow, page container boundaries, and stat card tests.
 - `test/widget_test.dart`: UI rendering, role switching, dark mode, and Hindi localization.
 
 ---
 
-## 8. Android Release APK Build
+## 8. Android Release APK Build (Local)
 
-To build the release APK locally:
+To compile the release APK locally:
 ```bash
 flutter build apk --release
 ```
@@ -130,7 +158,7 @@ The compiled APK will be generated at:
 build/app/outputs/flutter-apk/app-release.apk
 ```
 
-Alternatively, use the PowerShell helper script:
+Or execute the PowerShell build helper:
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/build_apk.ps1
 ```
@@ -139,22 +167,59 @@ powershell -ExecutionPolicy Bypass -File scripts/build_apk.ps1
 
 ## 9. GitHub Actions CI/CD Workflow
 
-The repository includes a production-quality workflow at [`.github/workflows/build-apk.yml`](file:///d:/my_project_files/schooltesting/.github/workflows/build-apk.yml).
+The repository includes an automated CI/CD workflow at [`.github/workflows/build-apk.yml`](https://github.com/JRalex07/School_Testing/blob/main/.github/workflows/build-apk.yml).
 
 ### 9.1 Triggers
-- Automatic triggers on `push` and `pull_request` to `main` and `master` branches.
+- Automatic on `push` and `pull_request` to `main` and `master` branches.
 - Manual trigger via `workflow_dispatch`.
 
-### 9.2 Permissions
-Configured with minimal least-privilege permissions:
-```yaml
-permissions:
-  contents: read
-```
+### 9.2 Build Pipeline Steps
+1. Checkout repository (`actions/checkout@v4`).
+2. Set up Java JDK 17 (`actions/setup-java@v4`).
+3. Set up Flutter stable (`subosito/flutter-action@v2`).
+4. Resolve dependencies (`flutter pub get`).
+5. Run static code analysis (`flutter analyze`).
+6. Run full test suite (`flutter test`).
+7. Build Android Release APK (`flutter build apk --release`).
+8. Generate build summary in `$GITHUB_STEP_SUMMARY`.
+9. Upload release artifact (`actions/upload-artifact@v4`).
+10. Publish pure `.apk` binary asset to GitHub Releases (`softprops/action-gh-release@v2`).
 
-### 9.3 Downloading the APK Artifact
-1. Go to your repository on GitHub: `https://github.com/JRalex07/School_Testing`
-2. Click on the **Actions** tab.
-3. Select the latest run of **Build Android APK**.
-4. Scroll down to the **Artifacts** section at the bottom of the summary page.
-5. Click **mps-school-management-apk** to download the generated `.apk` file.
+---
+
+## 10. Download Release APK (Direct .apk & Artifacts)
+
+### 10.1 Direct APK Download (No Zip File)
+
+> [!TIP]
+> To download the raw **`.apk` file directly without extracting any `.zip` archive**, click the direct release link below:
+
+[![Direct APK Download](https://img.shields.io/badge/Download_APK-app--release.apk-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/JRalex07/School_Testing/releases/latest/download/app-release.apk)
+
+- **Direct Download Link**: [**`app-release.apk` (Direct Download)**](https://github.com/JRalex07/School_Testing/releases/latest/download/app-release.apk)
+- **Latest Release Page**: [GitHub Releases](https://github.com/JRalex07/School_Testing/releases/tag/latest)
+
+Clicking the link above prompts your browser to save `app-release.apk` directly to your downloads.
+
+### 10.2 APK Specifications
+
+| Property | Value |
+|---|---|
+| **App Name** | MPS School Management System |
+| **Package Name** | `com.mps.myapplication` |
+| **Binary Filename** | `app-release.apk` |
+| **Direct URL** | `https://github.com/JRalex07/School_Testing/releases/latest/download/app-release.apk` |
+| **Target Platforms** | Android (Universal: `arm64-v8a`, `armeabi-v7a`, `x86_64`) |
+| **Min SDK** | Android 21 (Lollipop 5.0+) |
+| **Target SDK** | Android 34 (UpsideDownCake) |
+| **Firebase Project** | `tutorfee-83839` |
+| **Workflow File** | [`.github/workflows/build-apk.yml`](https://github.com/JRalex07/School_Testing/blob/main/.github/workflows/build-apk.yml) |
+
+### 10.3 Alternative: Download via GitHub Actions Artifacts
+
+If you prefer inspecting individual CI build runs:
+1. Open [GitHub Actions Runs](https://github.com/JRalex07/School_Testing/actions/workflows/build-apk.yml).
+2. Select the latest completed run with a green checkmark (`✔ Build Android APK`).
+3. Scroll to the **Artifacts** section at the bottom.
+4. Click **`mps-school-management-apk`** (GitHub Actions packages this as a zip container).
+5. For pure unzipped `.apk` files, use the **[Direct APK Download Link](https://github.com/JRalex07/School_Testing/releases/latest/download/app-release.apk)** in Section 10.1 above.

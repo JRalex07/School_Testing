@@ -45,6 +45,8 @@ class AttendanceRecord {
     this.remark,
   });
 
+  bool get isPresent => status == AttendanceStatus.present;
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

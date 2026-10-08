@@ -1,6 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'core/cache/cache_manager.dart';
 import 'core/constants/app_constants.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/theme/app_colors.dart';
@@ -13,16 +16,38 @@ import 'core/widgets/app_button.dart';
 import 'core/widgets/app_card.dart';
 import 'core/widgets/app_dialog.dart';
 import 'core/widgets/app_state_views.dart';
+import 'core/widgets/app_stat_card.dart';
+import 'core/widgets/app_text_field.dart';
 import 'core/widgets/responsive_layout.dart';
+import 'data/repositories/firebase_attendance_repository.dart';
+import 'data/repositories/firebase_fee_repository.dart';
+import 'data/repositories/firebase_student_repository.dart';
+import 'data/repositories/firebase_teacher_assignment_repository.dart';
+import 'domain/models/attendance_record.dart';
 import 'domain/models/fee_record.dart';
 import 'domain/models/student.dart';
 import 'domain/models/teacher_assignment.dart';
 import 'domain/models/user_role.dart';
-import 'domain/services/payment_provider.dart';
-import 'domain/services/teacher_authorization_service.dart';
+import 'domain/repositories/attendance_repository.dart';
+import 'domain/repositories/fee_repository.dart';
+import 'domain/repositories/student_repository.dart';
+import 'domain/repositories/teacher_assignment_repository.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    // Configure Firestore offline persistence (Rule 7)
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+  } catch (e) {
+    debugPrint('[MPS Startup] Firebase initialization warning: $e');
+  }
   runApp(const MPSApp());
 }
 
@@ -39,8 +64,9 @@ class _MPSAppState extends State<MPSApp> {
 
   void _toggleTheme() {
     setState(() {
-      _themeMode =
-          _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+      _themeMode = _themeMode == ThemeMode.light
+          ? ThemeMode.dark
+          : ThemeMode.light;
     });
   }
 
@@ -96,62 +122,555 @@ class MPSScreen extends StatefulWidget {
   State<MPSScreen> createState() => _MPSScreenState();
 }
 
-enum DemoViewState { content, loading, empty, error }
-
 class _MPSScreenState extends State<MPSScreen> {
   UserRole _selectedRole = UserRole.parent;
-  DemoViewState _currentViewState = DemoViewState.content;
-  int _selectedTabIndex = 0;
+  int _selectedNavIndex = 0;
 
-  final TeacherAuthorizationService _authService = const TeacherAuthorizationService();
-  final ManualPaymentProvider _paymentProvider = ManualPaymentProvider();
+  // Authoritative Repositories with Scoped Caching
+  final StudentRepository _studentRepository = FirebaseStudentRepository();
+  final AttendanceRepository _attendanceRepository =
+      FirebaseAttendanceRepository();
+  final FeeRepository _feeRepository = FirebaseFeeRepository();
+  final TeacherAssignmentRepository _assignmentRepository =
+      FirebaseTeacherAssignmentRepository();
 
-  // Active Teacher assignments (Teacher A assigned to Class 6A Mathematics only)
-  final List<TeacherAssignment> _activeTeacherAssignments = [
-    TeacherAssignment(
-      id: 'assign_teacher_6A_math',
-      teacherId: 'teacher_user_01',
-      academicYearId: '2026-2027',
-      classId: '6',
-      sectionId: 'A',
-      subjectId: 'math',
-      isClassTeacher: true,
-      assignedAt: DateTime(2026, 4, 1),
-    ),
-  ];
+  // Active School ID
+  static const String _schoolId = 'mps_main';
+  static const String _defaultParentId = 'parent_user_01';
+  static const String _defaultTeacherId = 'teacher_user_01';
 
-  // Active Student in Class 6A
-  final Student _activeStudent = const Student(
-    id: 'std_6A_001',
-    admissionNumber: 'MPS-2026-001',
-    fullName: 'Student (Class 6-A)',
-    classId: '6',
-    section: 'A',
-    rollNumber: '101',
-    parentUserIds: ['parent_user_01'],
-  );
+  // --- Parent State ---
+  List<Student> _parentStudents = [];
+  Student? _selectedStudent;
+  List<FeeRecord> _studentFees = [];
+  List<AttendanceRecord> _studentAttendanceRecords = [];
+  bool _isLoadingParent = false;
+  String? _parentError;
 
-  // Fee Record (Manual / Offline payment model)
-  FeeRecord _sampleFee = FeeRecord(
-    id: 'fee_term1_2026',
-    schoolId: 'mps_main',
-    studentId: 'std_6A_001',
-    studentName: 'Student (Class 6-A)',
-    title: 'Term 1 Tuition & Composite Fee',
-    amount: 14500.0,
-    paidAmount: 0.0,
-    dueDate: DateTime(2026, 11, 15),
-    status: PaymentStatus.unpaid,
-    isServerVerified: true,
-  );
+  // --- Teacher State ---
+  List<TeacherAssignment> _teacherAssignments = [];
+  TeacherAssignment? _selectedAssignment;
+  List<Student> _classStudents = [];
+  Map<String, bool> _attendanceMap = {}; // studentId -> isPresent
+  bool _isLoadingTeacher = false;
+  bool _isSavingAttendance = false;
+  String? _teacherError;
 
-  // Attendance Register for Class 6A
-  final List<Map<String, dynamic>> _attendanceList = [
-    {'name': 'Student 101', 'roll': '101', 'present': true},
-    {'name': 'Student 102', 'roll': '102', 'present': true},
-    {'name': 'Student 103', 'roll': '103', 'present': false},
-    {'name': 'Student 104', 'roll': '104', 'present': true},
-  ];
+  // --- Principal State ---
+  int? _totalStudentsCount;
+  int? _activeTeacherAssignmentsCount;
+  Map<String, double>? _schoolFeeMetrics;
+  bool _isLoadingPrincipal = false;
+  String? _principalError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDataForRole(_selectedRole);
+  }
+
+  void _onRoleChanged(UserRole newRole) {
+    setState(() => _selectedRole = newRole);
+    _loadDataForRole(newRole);
+  }
+
+  Future<void> _loadDataForRole(UserRole role) async {
+    switch (role) {
+      case UserRole.parent:
+        await _loadParentData();
+        break;
+      case UserRole.teacher:
+        await _loadTeacherData();
+        break;
+      case UserRole.principal:
+        await _loadPrincipalData();
+        break;
+      default:
+        await _loadParentData();
+    }
+  }
+
+  // ==========================================
+  // REAL FIRESTORE DATA LOADERS
+  // ==========================================
+
+  Future<void> _loadParentData({bool forceRefresh = false}) async {
+    setState(() {
+      _isLoadingParent = true;
+      _parentError = null;
+    });
+
+    if (forceRefresh) {
+      CacheManager().invalidateTag('parent_$_defaultParentId');
+    }
+
+    try {
+      final studentsResult = await _studentRepository.getStudentsForParent(
+        _defaultParentId,
+      );
+
+      if (studentsResult.isFailure) {
+        setState(() {
+          _parentError = studentsResult.errorOrNull?.message;
+          _isLoadingParent = false;
+        });
+        return;
+      }
+
+      final students = studentsResult.dataOrNull ?? [];
+      _parentStudents = students;
+
+      if (students.isNotEmpty) {
+        _selectedStudent =
+            _selectedStudent != null &&
+                students.any((s) => s.id == _selectedStudent!.id)
+            ? _selectedStudent
+            : students.first;
+
+        await _loadStudentFinancialsAndAttendance(_selectedStudent!.id);
+      } else {
+        _selectedStudent = null;
+        _studentFees = [];
+        _studentAttendanceRecords = [];
+      }
+    } catch (e) {
+      _parentError = e.toString();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingParent = false);
+      }
+    }
+  }
+
+  Future<void> _loadStudentFinancialsAndAttendance(String studentId) async {
+    final feesResult = await _feeRepository.getFeesForStudent(studentId);
+    final attResult = await _attendanceRepository.getStudentAttendance(
+      studentId,
+    );
+
+    if (mounted) {
+      setState(() {
+        _studentFees = feesResult.dataOrNull ?? [];
+        _studentAttendanceRecords = attResult.dataOrNull ?? [];
+      });
+    }
+  }
+
+  Future<void> _loadTeacherData({bool forceRefresh = false}) async {
+    setState(() {
+      _isLoadingTeacher = true;
+      _teacherError = null;
+    });
+
+    if (forceRefresh) {
+      CacheManager().invalidateTag('teacher_$_defaultTeacherId');
+    }
+
+    try {
+      final assignResult = await _assignmentRepository.getTeacherAssignments(
+        _defaultTeacherId,
+      );
+
+      if (assignResult.isFailure) {
+        setState(() {
+          _teacherError = assignResult.errorOrNull?.message;
+          _isLoadingTeacher = false;
+        });
+        return;
+      }
+
+      final assignments = assignResult.dataOrNull ?? [];
+      _teacherAssignments = assignments;
+
+      if (assignments.isNotEmpty) {
+        _selectedAssignment =
+            _selectedAssignment != null &&
+                assignments.any((a) => a.id == _selectedAssignment!.id)
+            ? _selectedAssignment
+            : assignments.first;
+
+        await _loadAssignedClassStudents(_selectedAssignment!);
+      } else {
+        _selectedAssignment = null;
+        _classStudents = [];
+        _attendanceMap.clear();
+      }
+    } catch (e) {
+      _teacherError = e.toString();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingTeacher = false);
+      }
+    }
+  }
+
+  Future<void> _loadAssignedClassStudents(TeacherAssignment assignment) async {
+    final studentsResult = await _studentRepository.getStudentsByClass(
+      classId: assignment.classId,
+      section: assignment.sectionId,
+    );
+
+    final students = studentsResult.dataOrNull ?? [];
+    final today = DateTime.now();
+
+    final attResult = await _attendanceRepository.getClassAttendance(
+      classId: assignment.classId,
+      section: assignment.sectionId,
+      date: today,
+    );
+
+    final existingRecords = attResult.dataOrNull ?? [];
+    final map = <String, bool>{};
+
+    for (final s in students) {
+      final record = existingRecords.firstWhere(
+        (r) => r.studentId == s.id,
+        orElse: () => AttendanceRecord(
+          id: '',
+          studentId: s.id,
+          studentName: s.fullName,
+          classId: s.classId,
+          section: s.section,
+          date: today,
+          status: AttendanceStatus.present,
+          markedByUserId: _defaultTeacherId,
+          markedAt: today,
+        ),
+      );
+      map[s.id] = record.isPresent;
+    }
+
+    if (mounted) {
+      setState(() {
+        _classStudents = students;
+        _attendanceMap = map;
+      });
+    }
+  }
+
+  Future<void> _loadPrincipalData({bool forceRefresh = false}) async {
+    setState(() {
+      _isLoadingPrincipal = true;
+      _principalError = null;
+    });
+
+    if (forceRefresh) {
+      CacheManager().invalidateTag('school_$_schoolId');
+      CacheManager().invalidate('students:count:active');
+      CacheManager().invalidate('assignments:count:2026-2027');
+    }
+
+    try {
+      final stdCountRes = await _studentRepository.getTotalStudentCount();
+      final assignCountRes = await _assignmentRepository
+          .getActiveAssignmentCount('2026-2027');
+      final feeMetricsRes = await _feeRepository.getSchoolFeeMetrics(_schoolId);
+
+      if (mounted) {
+        setState(() {
+          _totalStudentsCount = stdCountRes.dataOrNull ?? 0;
+          _activeTeacherAssignmentsCount = assignCountRes.dataOrNull ?? 0;
+          _schoolFeeMetrics = feeMetricsRes.dataOrNull;
+          _isLoadingPrincipal = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _principalError = e.toString();
+          _isLoadingPrincipal = false;
+        });
+      }
+    }
+  }
+
+  // ==========================================
+  // REAL FIRESTORE CRUD ACTIONS
+  // ==========================================
+
+  void _showAddStudentDialog({String? prefillClass, String? prefillSec}) {
+    final nameCtrl = TextEditingController();
+    final admCtrl = TextEditingController(
+      text:
+          'MPS-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+    );
+    final classCtrl = TextEditingController(text: prefillClass ?? '6');
+    final secCtrl = TextEditingController(text: prefillSec ?? 'A');
+    final rollCtrl = TextEditingController(text: '101');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enroll New Student in MPS'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppTextField(label: 'Full Name', controller: nameCtrl),
+              AppSpacing.gapSm,
+              AppTextField(label: 'Admission Number', controller: admCtrl),
+              AppSpacing.gapSm,
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(label: 'Class', controller: classCtrl),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: AppTextField(label: 'Section', controller: secCtrl),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: AppTextField(label: 'Roll No', controller: rollCtrl),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameCtrl.text.trim().isEmpty) return;
+              Navigator.pop(ctx);
+
+              final newStudent = Student(
+                id: '',
+                admissionNumber: admCtrl.text.trim(),
+                fullName: nameCtrl.text.trim(),
+                classId: classCtrl.text.trim(),
+                section: secCtrl.text.trim().toUpperCase(),
+                rollNumber: rollCtrl.text.trim(),
+                parentUserIds: [_defaultParentId],
+                isActive: true,
+              );
+
+              final result = await _studentRepository.createStudent(newStudent);
+              if (result.isSuccess && mounted) {
+                AppDialog.showAlert(
+                  context: context,
+                  title: 'Student Enrolled',
+                  message:
+                      '${newStudent.fullName} enrolled into Class ${newStudent.classId}-${newStudent.section}.',
+                );
+                _loadDataForRole(_selectedRole);
+              }
+            },
+            child: const Text('Enroll Student'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateAssignmentDialog() {
+    final classCtrl = TextEditingController(text: '6');
+    final secCtrl = TextEditingController(text: 'A');
+    final subjectCtrl = TextEditingController(text: 'Mathematics');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Assign Class to Teacher'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppTextField(label: 'Class', controller: classCtrl),
+            AppSpacing.gapSm,
+            AppTextField(label: 'Section', controller: secCtrl),
+            AppSpacing.gapSm,
+            AppTextField(label: 'Subject', controller: subjectCtrl),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final assignment = TeacherAssignment(
+                id: '',
+                teacherId: _defaultTeacherId,
+                academicYearId: '2026-2027',
+                classId: classCtrl.text.trim(),
+                sectionId: secCtrl.text.trim().toUpperCase(),
+                subjectId: subjectCtrl.text.trim(),
+                isClassTeacher: true,
+                assignedAt: DateTime.now(),
+              );
+
+              final result = await _assignmentRepository.assignTeacher(
+                assignment,
+              );
+              if (result.isSuccess && mounted) {
+                AppDialog.showAlert(
+                  context: context,
+                  title: 'Assignment Created',
+                  message:
+                      'Teacher assigned to Class ${assignment.classId}-${assignment.sectionId} (${assignment.subjectId}).',
+                );
+                _loadTeacherData();
+              }
+            },
+            child: const Text('Assign'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateFeeDialog(Student student) {
+    final titleCtrl = TextEditingController(text: 'Term 1 Tuition Fee');
+    final amountCtrl = TextEditingController(text: '12000');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Assign Fee: ${student.fullName}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppTextField(label: 'Fee Title', controller: titleCtrl),
+            AppSpacing.gapSm,
+            AppTextField(
+              label: 'Amount (₹)',
+              controller: amountCtrl,
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final amount = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
+              if (amount <= 0) return;
+              Navigator.pop(ctx);
+
+              final fee = FeeRecord(
+                id: '',
+                schoolId: _schoolId,
+                studentId: student.id,
+                studentName: student.fullName,
+                title: titleCtrl.text.trim(),
+                amount: amount,
+                paidAmount: 0.0,
+                dueDate: DateTime.now().add(const Duration(days: 30)),
+                status: PaymentStatus.unpaid,
+                auditCreatedBy: 'admin_principal',
+                auditCreatedAt: DateTime.now(),
+              );
+
+              final doc = FirebaseFirestore.instance.collection('fees').doc();
+              await doc.set(fee.toMap());
+              CacheManager().invalidate(CacheKeys.studentFees(student.id));
+              CacheManager().invalidateTag('school_$_schoolId');
+
+              if (mounted) {
+                AppDialog.showAlert(
+                  context: context,
+                  title: 'Fee Assigned',
+                  message: 'Fee record created for ₹$amount.',
+                );
+                _loadStudentFinancialsAndAttendance(student.id);
+              }
+            },
+            child: const Text('Create Fee'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _recordManualPayment(FeeRecord fee) async {
+    final result = await _feeRepository.recordOfflinePayment(
+      schoolId: _schoolId,
+      feeRecord: fee,
+      amount: fee.balanceDue,
+      paymentMethod: PaymentMethod.cash,
+      referenceNumber:
+          'CASH-CNTR-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+      recordedByUserId: 'fee_counter_01',
+      notes: 'Fee counter cash receipt settlement',
+    );
+
+    if (result.isSuccess && mounted) {
+      final payment = result.dataOrNull!;
+      AppDialog.showAlert(
+        context: context,
+        title: 'Official Payment Recorded',
+        message:
+            'Payment recorded in Firestore.\n\nReceipt Number: ${payment.receiptNumber}\nAmount Paid: ₹${payment.amount}',
+      );
+      if (_selectedStudent != null) {
+        _loadStudentFinancialsAndAttendance(_selectedStudent!.id);
+      }
+    } else if (mounted) {
+      AppDialog.showAlert(
+        context: context,
+        title: 'Payment Failed',
+        message: result.errorOrNull?.message ?? 'Could not record payment.',
+      );
+    }
+  }
+
+  Future<void> _saveAttendance() async {
+    if (_selectedAssignment == null || _classStudents.isEmpty) return;
+
+    setState(() => _isSavingAttendance = true);
+
+    final today = DateTime.now();
+    final records = _classStudents.map((s) {
+      final isPresent = _attendanceMap[s.id] ?? true;
+      return AttendanceRecord(
+        id: '',
+        studentId: s.id,
+        studentName: s.fullName,
+        classId: _selectedAssignment!.classId,
+        section: _selectedAssignment!.sectionId,
+        date: today,
+        status: isPresent ? AttendanceStatus.present : AttendanceStatus.absent,
+        markedByUserId: _defaultTeacherId,
+        markedAt: today,
+      );
+    }).toList();
+
+    final result = await _attendanceRepository.saveAttendance(
+      records: records,
+      teacherUserId: _defaultTeacherId,
+    );
+
+    if (mounted) {
+      setState(() => _isSavingAttendance = false);
+      if (result.isSuccess) {
+        AppDialog.showAlert(
+          context: context,
+          title: 'Attendance Saved',
+          message:
+              'Recorded attendance for ${_classStudents.length} students in Class ${_selectedAssignment!.classId}-${_selectedAssignment!.sectionId}.',
+        );
+      } else {
+        AppDialog.showAlert(
+          context: context,
+          title: 'Error Saving Attendance',
+          message: result.errorOrNull?.message ?? 'Failed to write attendance.',
+        );
+      }
+    }
+  }
+
+  // ==========================================
+  // UI BUILDERS
+  // ==========================================
 
   @override
   Widget build(BuildContext context) {
@@ -159,86 +678,46 @@ class _MPSScreenState extends State<MPSScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
+      appBar: _buildAppBar(l10n),
+      body: ResponsiveLayout(
+        mobile: (ctx) => _buildUnifiedBody(ctx, l10n, theme),
+        tablet: (ctx) => Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: AppRadius.radiusSm,
-              ),
-              child: const Icon(Icons.school, color: Colors.white, size: 20),
-            ),
-            AppSpacing.gapSm,
-            Flexible(
-              child: Text(
-                l10n.translate('app_title'),
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.titleMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+            _buildNavigationRail(l10n),
+            const VerticalDivider(width: 1),
+            Expanded(child: _buildUnifiedBody(ctx, l10n, theme)),
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: widget.currentLocale.languageCode == 'en'
-                ? 'Switch to Hindi'
-                : 'अंग्रेजी में बदलें',
-            icon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.translate, size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  widget.currentLocale.languageCode.toUpperCase(),
-                  style: AppTypography.labelSmall.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            onPressed: widget.onToggleLocale,
-          ),
-          IconButton(
-            tooltip: widget.isDarkMode ? 'Light Mode' : 'Dark Mode',
-            icon: Icon(
-              widget.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-              size: 20,
-            ),
-            onPressed: widget.onToggleTheme,
-          ),
-          AppSpacing.gapSm,
-        ],
-      ),
-      body: ResponsiveLayout(
-        mobile: (ctx) => _buildMobileLayout(ctx, l10n, theme),
-        tablet: (ctx) => _buildTabletLayout(ctx, l10n, theme),
-        desktop: (ctx) => _buildDesktopLayout(ctx, l10n, theme),
+        desktop: (ctx) => Row(
+          children: [
+            _buildDesktopSidebar(l10n, theme),
+            const VerticalDivider(width: 1),
+            Expanded(child: _buildUnifiedBody(ctx, l10n, theme)),
+          ],
+        ),
       ),
       bottomNavigationBar: ResponsiveLayout.isMobile(context)
           ? NavigationBar(
-              selectedIndex: _selectedTabIndex,
-              onDestinationSelected: (index) {
-                setState(() => _selectedTabIndex = index);
-              },
+              selectedIndex: _selectedNavIndex,
+              onDestinationSelected: (idx) =>
+                  setState(() => _selectedNavIndex = idx),
+              height: 60,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               destinations: [
                 NavigationDestination(
-                  icon: const Icon(Icons.dashboard_outlined),
-                  selectedIcon: const Icon(Icons.dashboard),
+                  icon: const Icon(Icons.dashboard_outlined, size: 20),
+                  selectedIcon: const Icon(Icons.dashboard, size: 20),
                   label: l10n.translate('dashboard'),
                 ),
-                const NavigationDestination(
-                  icon: Icon(Icons.security_outlined),
-                  selectedIcon: Icon(Icons.security),
-                  label: 'Access Control',
+                NavigationDestination(
+                  icon: const Icon(Icons.how_to_reg_outlined, size: 20),
+                  selectedIcon: const Icon(Icons.how_to_reg, size: 20),
+                  label: l10n.translate('attendance'),
                 ),
-                const NavigationDestination(
-                  icon: Icon(Icons.tune_outlined),
-                  selectedIcon: Icon(Icons.tune),
-                  label: 'States',
+                NavigationDestination(
+                  icon: const Icon(Icons.receipt_long_outlined, size: 20),
+                  selectedIcon: const Icon(Icons.receipt_long, size: 20),
+                  label: l10n.translate('fees'),
                 ),
               ],
             )
@@ -246,199 +725,133 @@ class _MPSScreenState extends State<MPSScreen> {
     );
   }
 
-  Widget _buildMobileLayout(
-    BuildContext context,
-    AppLocalizations l10n,
-    ThemeData theme,
-  ) {
-    return SingleChildScrollView(
-      padding: AppSpacing.paddingMd,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  PreferredSizeWidget _buildAppBar(AppLocalizations l10n) {
+    return AppBar(
+      titleSpacing: 16,
+      toolbarHeight: 52,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _buildRoleSelectorCard(l10n),
-          AppSpacing.gapMd,
-          _buildActiveTabContent(context, l10n, theme),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabletLayout(
-    BuildContext context,
-    AppLocalizations l10n,
-    ThemeData theme,
-  ) {
-    return Row(
-      children: [
-        NavigationRail(
-          selectedIndex: _selectedTabIndex,
-          onDestinationSelected: (index) {
-            setState(() => _selectedTabIndex = index);
-          },
-          labelType: NavigationRailLabelType.all,
-          destinations: [
-            NavigationRailDestination(
-              icon: const Icon(Icons.dashboard_outlined),
-              selectedIcon: const Icon(Icons.dashboard),
-              label: Text(l10n.translate('dashboard')),
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: AppRadius.radiusSm,
             ),
-            const NavigationRailDestination(
-              icon: Icon(Icons.security_outlined),
-              selectedIcon: Icon(Icons.security),
-              label: Text('Access Control'),
-            ),
-            const NavigationRailDestination(
-              icon: Icon(Icons.tune_outlined),
-              selectedIcon: Icon(Icons.tune),
-              label: Text('States'),
-            ),
-          ],
-        ),
-        const VerticalDivider(width: 1),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: AppSpacing.paddingLg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildRoleSelectorCard(l10n),
-                AppSpacing.gapLg,
-                _buildActiveTabContent(context, l10n, theme),
-              ],
+            child: const Icon(Icons.school, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              l10n.translate('app_title'),
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.titleMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
             ),
           ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          tooltip: 'Refresh Firestore Data',
+          icon: const Icon(Icons.refresh, size: 18),
+          onPressed: () => _loadDataForRole(_selectedRole),
         ),
-      ],
-    );
-  }
-
-  Widget _buildDesktopLayout(
-    BuildContext context,
-    AppLocalizations l10n,
-    ThemeData theme,
-  ) {
-    return Row(
-      children: [
-        Container(
-          width: 250,
-          color: theme.colorScheme.surface,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        IconButton(
+          tooltip: widget.currentLocale.languageCode == 'en'
+              ? 'Switch to Hindi'
+              : 'अंग्रेजी में बदलें',
+          icon: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Padding(
-                padding: AppSpacing.paddingMd,
-                child: Text(
-                  'MPS NAVIGATION',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: theme.colorScheme.onSurface.withAlpha(140),
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.dashboard),
-                title: Text(l10n.translate('dashboard')),
-                selected: _selectedTabIndex == 0,
-                selectedTileColor: theme.colorScheme.primaryContainer,
-                onTap: () => setState(() => _selectedTabIndex = 0),
-              ),
-              ListTile(
-                leading: const Icon(Icons.security),
-                title: const Text('Access Control & Security'),
-                selected: _selectedTabIndex == 1,
-                selectedTileColor: theme.colorScheme.primaryContainer,
-                onTap: () => setState(() => _selectedTabIndex = 1),
-              ),
-              ListTile(
-                leading: const Icon(Icons.tune),
-                title: const Text('State Simulation'),
-                selected: _selectedTabIndex == 2,
-                selectedTileColor: theme.colorScheme.primaryContainer,
-                onTap: () => setState(() => _selectedTabIndex = 2),
-              ),
-              const Spacer(),
-              Padding(
-                padding: AppSpacing.paddingMd,
-                child: AppCard(
-                  color: theme.colorScheme.primaryContainer.withAlpha(80),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Project tutorfee-83839',
-                        style: AppTypography.labelSmall.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'MPS Backend & Firestore Rules Active',
-                        style: AppTypography.bodySmall.copyWith(fontSize: 11),
-                      ),
-                    ],
-                  ),
+              const Icon(Icons.translate, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                widget.currentLocale.languageCode.toUpperCase(),
+                style: AppTypography.labelSmall.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
                 ),
               ),
             ],
           ),
+          onPressed: widget.onToggleLocale,
         ),
-        const VerticalDivider(width: 1),
-        Expanded(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AppConstants.maxContentWidth,
-              ),
-              child: SingleChildScrollView(
-                padding: AppSpacing.paddingXl,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildRoleSelectorCard(l10n),
-                    AppSpacing.gapXl,
-                    _buildActiveTabContent(context, l10n, theme),
-                  ],
-                ),
-              ),
-            ),
+        IconButton(
+          tooltip: widget.isDarkMode ? 'Light Mode' : 'Dark Mode',
+          icon: Icon(
+            widget.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+            size: 18,
+          ),
+          onPressed: widget.onToggleTheme,
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildUnifiedBody(
+    BuildContext context,
+    AppLocalizations l10n,
+    ThemeData theme,
+  ) {
+    return RefreshIndicator(
+      onRefresh: () => _loadDataForRole(_selectedRole),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ResponsivePageContainer(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildRoleSelectorCard(l10n),
+              AppSpacing.gapMd,
+              _buildRoleDashboard(context, l10n, theme),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildRoleSelectorCard(AppLocalizations l10n) {
     return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.shield_outlined,
-                  color: AppColors.primary, size: 20),
-              AppSpacing.gapSm,
-              Text(
-                'ROLE AUTHORIZATION CONTEXT',
-                style: AppTypography.labelSmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ],
+          const Icon(Icons.badge_outlined, color: AppColors.primary, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            'ROLE:',
+            style: AppTypography.labelSmall.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
           ),
-          AppSpacing.gapSm,
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              _buildRoleChip(UserRole.parent, l10n.translate('role_parent'),
-                  Icons.family_restroom),
-              _buildRoleChip(UserRole.teacher, l10n.translate('role_teacher'),
-                  Icons.person),
-              _buildRoleChip(UserRole.principal,
-                  l10n.translate('role_principal'), Icons.admin_panel_settings),
-            ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                _buildRoleChip(
+                  UserRole.parent,
+                  l10n.translate('role_parent'),
+                  Icons.family_restroom,
+                ),
+                _buildRoleChip(
+                  UserRole.teacher,
+                  l10n.translate('role_teacher'),
+                  Icons.person,
+                ),
+                _buildRoleChip(
+                  UserRole.principal,
+                  l10n.translate('role_principal'),
+                  Icons.admin_panel_settings,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -449,64 +862,38 @@ class _MPSScreenState extends State<MPSScreen> {
     final isSelected = _selectedRole == role;
     return ChoiceChip(
       selected: isSelected,
+      visualDensity: VisualDensity.compact,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon,
-              size: 16, color: isSelected ? Colors.white : AppColors.primary),
-          const SizedBox(width: 6),
-          Text(label),
+          Icon(
+            icon,
+            size: 14,
+            color: isSelected ? Colors.white : AppColors.primary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? Colors.white : null,
+            ),
+          ),
         ],
       ),
       onSelected: (selected) {
-        if (selected) setState(() => _selectedRole = role);
+        if (selected) _onRoleChanged(role);
       },
     );
   }
 
-  Widget _buildActiveTabContent(
+  Widget _buildRoleDashboard(
     BuildContext context,
     AppLocalizations l10n,
     ThemeData theme,
   ) {
-    switch (_selectedTabIndex) {
-      case 0:
-        return _buildDashboardContent(context, l10n, theme);
-      case 1:
-        return _buildAccessControlContent(context, l10n);
-      case 2:
-        return _buildStateSimulationContent(context, l10n);
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-
-  // --- TAB 1: Dashboard ---
-  Widget _buildDashboardContent(
-    BuildContext context,
-    AppLocalizations l10n,
-    ThemeData theme,
-  ) {
-    if (_currentViewState == DemoViewState.loading) {
-      return AppLoadingIndicator(message: l10n.translate('loading'));
-    }
-    if (_currentViewState == DemoViewState.empty) {
-      return AppEmptyState(
-        title: l10n.translate('empty_fees'),
-        description: 'No pending records found.',
-        actionLabel: 'Refresh',
-        onAction: () =>
-            setState(() => _currentViewState = DemoViewState.content),
-      );
-    }
-    if (_currentViewState == DemoViewState.error) {
-      return AppErrorState(
-        message: l10n.translate('error_network'),
-        onRetry: () =>
-            setState(() => _currentViewState = DemoViewState.content),
-      );
-    }
-
     switch (_selectedRole) {
       case UserRole.parent:
         return _buildParentDashboard(context, l10n, theme);
@@ -519,154 +906,51 @@ class _MPSScreenState extends State<MPSScreen> {
     }
   }
 
-  // Parent View
+  // ==========================================
+  // REAL PARENT VIEW
+  // ==========================================
   Widget _buildParentDashboard(
     BuildContext context,
     AppLocalizations l10n,
     ThemeData theme,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Student: ${_activeStudent.fullName} (${_activeStudent.admissionNumber})',
-          style: AppTypography.titleLarge,
-        ),
-        AppSpacing.gapMd,
-        AppCard(
-          color: theme.colorScheme.surface,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    l10n.translate('fee_total_due'),
-                    style: AppTypography.labelLarge.copyWith(
-                      color: AppColors.error,
-                    ),
-                  ),
-                  AppBadge(
-                    label: _sampleFee.status == PaymentStatus.paid
-                        ? l10n.translate('fee_status_paid')
-                        : 'Due Nov 15',
-                    variant: _sampleFee.status == PaymentStatus.paid
-                        ? AppBadgeVariant.success
-                        : AppBadgeVariant.warning,
-                  ),
-                ],
-              ),
-              AppSpacing.gapSm,
-              Text(
-                '₹${_sampleFee.balanceDue.toStringAsFixed(0)}',
-                style: AppTypography.displayLarge.copyWith(
-                  color: _sampleFee.balanceDue == 0
-                      ? AppColors.success
-                      : AppColors.error,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              AppSpacing.gapSm,
-              Text(_sampleFee.title, style: AppTypography.bodyMedium),
-              if (_sampleFee.receiptNumber != null) ...[
-                AppSpacing.gapSm,
-                Text(
-                  'Receipt: ${_sampleFee.receiptNumber}',
-                  style: AppTypography.bodySmall.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.success,
-                  ),
-                ),
-              ],
-              AppSpacing.gapLg,
-              // Manual Payment Recording action (offline payment provider)
-              AppButton.primary(
-                text: l10n.translate('fee_record_payment'),
-                icon: Icons.receipt_long_outlined,
-                onPressed: _sampleFee.balanceDue == 0
-                    ? null
-                    : () async {
-                        final result = await _paymentProvider.recordPayment(
-                          schoolId: 'mps_main',
-                          feeRecord: _sampleFee,
-                          amount: _sampleFee.balanceDue,
-                          paymentMethod: PaymentMethod.cash,
-                          recordedByUserId: 'office_staff_01',
-                          notes: 'Official fee counter cash collection',
-                        );
-                        if (result.isSuccess) {
-                          final payment = result.dataOrNull!;
-                          setState(() {
-                            _sampleFee = FeeRecord(
-                              id: _sampleFee.id,
-                              schoolId: _sampleFee.schoolId,
-                              studentId: _sampleFee.studentId,
-                              studentName: _sampleFee.studentName,
-                              title: _sampleFee.title,
-                              amount: _sampleFee.amount,
-                              paidAmount: _sampleFee.amount,
-                              dueDate: _sampleFee.dueDate,
-                              status: PaymentStatus.paid,
-                              lastPaymentMethod: 'cash',
-                              receiptNumber: payment.receiptNumber,
-                              paidAt: payment.paidAt,
-                              isServerVerified: true,
-                            );
-                          });
-                          if (context.mounted) {
-                            AppDialog.showAlert(
-                              context: context,
-                              title: 'Official Receipt Generated',
-                              message:
-                                  '${l10n.translate('fee_payment_recorded_success')}\n\nReceipt Number: ${payment.receiptNumber}\nAmount: ₹${payment.amount}',
-                            );
-                          }
-                        }
-                      },
-              ),
-            ],
-          ),
-        ),
-        AppSpacing.gapMd,
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    l10n.translate('attendance_rate'),
-                    style: AppTypography.titleMedium,
-                  ),
-                  const AppBadge(
-                    label: '96% Present',
-                    variant: AppBadgeVariant.success,
-                    icon: Icons.check_circle_outline,
-                  ),
-                ],
-              ),
-              AppSpacing.gapSm,
-              const LinearProgressIndicator(
-                value: 0.96,
-                color: AppColors.success,
-                backgroundColor: AppColors.lightBorder,
-                minHeight: 8,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+    if (_isLoadingParent) {
+      return const AppLoadingIndicator(
+        message: 'Loading verified student records...',
+      );
+    }
 
-  // Teacher View (Restricted to assigned Class 6A)
-  Widget _buildTeacherDashboard(
-    BuildContext context,
-    AppLocalizations l10n,
-    ThemeData theme,
-  ) {
+    if (_parentError != null) {
+      return AppErrorState(
+        title: 'Unable to Load Student Records',
+        message: _parentError!,
+        onRetry: () => _loadParentData(forceRefresh: true),
+      );
+    }
+
+    if (_parentStudents.isEmpty) {
+      return AppCard(
+        child: AppEmptyState(
+          icon: Icons.person_off_outlined,
+          title: 'No Linked Children Found',
+          description: 'No enrolled students are currently linked to this parent account in Firestore.',
+          actionLabel: 'Enroll First Student',
+          onAction: () => _showAddStudentDialog(),
+        ),
+      );
+    }
+
+    final student = _selectedStudent ?? _parentStudents.first;
+    final totalAttendance = _studentAttendanceRecords.length;
+    final presentCount = _studentAttendanceRecords
+        .where((r) => r.isPresent)
+        .length;
+    final attendanceRate = totalAttendance > 0
+        ? ((presentCount / totalAttendance) * 100).toStringAsFixed(0)
+        : null;
+
+    final primaryFee = _studentFees.isNotEmpty ? _studentFees.first : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -678,137 +962,434 @@ class _MPSScreenState extends State<MPSScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${l10n.translate('attendance_mark')} — Assigned: Class 6-A (Math)',
-                    style: AppTypography.titleLarge,
+                    'Student: ${student.fullName} (${student.admissionNumber})',
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
+                  const SizedBox(height: 4),
                   Text(
-                    'Access limited to explicit assignment (Teacher A → Class 6A)',
-                    style: AppTypography.bodySmall,
+                    'Class ${student.classId}-${student.section} • Roll No: ${student.rollNumber}',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: theme.colorScheme.onSurface.withAlpha(160),
+                    ),
                   ),
                 ],
               ),
             ),
-            AppSpacing.gapSm,
-            AppButton.primary(
-              text: l10n.translate('save'),
-              icon: Icons.check,
+            AppButton.outlined(
+              text: 'Add Child',
+              icon: Icons.add,
+              isCompact: true,
               fullWidth: false,
-              onPressed: () {
-                AppDialog.showAlert(
-                  context: context,
-                  title: 'Attendance Recorded',
-                  message: l10n.translate('attendance_save_confirm'),
-                );
-              },
+              onPressed: () => _showAddStudentDialog(),
             ),
           ],
         ),
         AppSpacing.gapMd,
-        AppCard(
-          padding: EdgeInsets.zero,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _attendanceList.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (ctx, idx) {
-              final student = _attendanceList[idx];
-              final isPresent = student['present'] as bool;
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: AppColors.primaryContainer,
-                  child: Text(
-                    student['roll'] as String,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                title: Text(
-                  student['name'] as String,
-                  style: AppTypography.titleMedium,
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+        ResponsiveGrid(
+          targetItemWidth: 260.0,
+          children: [
+            AppStatCard(
+              title: l10n.translate('attendance_rate'),
+              value: attendanceRate != null
+                  ? '$attendanceRate% Present'
+                  : 'No records',
+              icon: Icons.check_circle_outline,
+              badge: totalAttendance > 0
+                  ? '$presentCount / $totalAttendance Days'
+                  : 'Unrecorded',
+              badgeVariant: totalAttendance > 0
+                  ? AppBadgeVariant.success
+                  : AppBadgeVariant.info,
+            ),
+            AppStatCard(
+              title: l10n.translate('fee_total_due'),
+              value: primaryFee != null
+                  ? '₹${primaryFee.balanceDue.toStringAsFixed(0)}'
+                  : '₹0',
+              icon: Icons.account_balance_wallet_outlined,
+              badge: primaryFee != null
+                  ? (primaryFee.balanceDue == 0 ? 'Settled' : 'Due')
+                  : 'No Fees Assigned',
+              badgeVariant: (primaryFee == null || primaryFee.balanceDue == 0)
+                  ? AppBadgeVariant.success
+                  : AppBadgeVariant.warning,
+            ),
+          ],
+        ),
+        AppSpacing.gapMd,
+        if (primaryFee == null)
+          AppCard(
+            child: AppEmptyState(
+              icon: Icons.receipt_long_outlined,
+              title: 'No Fee Records Found',
+              description:
+                  'No pending fee assignments exist for ${student.fullName}.',
+              actionLabel: 'Assign Fee Record',
+              onAction: () => _showCreateFeeDialog(student),
+            ),
+          )
+        else
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    AppBadge(
-                      label: isPresent
-                          ? l10n.translate('attendance_present')
-                          : l10n.translate('attendance_absent'),
-                      variant: isPresent
-                          ? AppBadgeVariant.success
-                          : AppBadgeVariant.error,
+                    Text(
+                      l10n.translate('fee_breakdown'),
+                      style: AppTypography.titleMedium,
                     ),
-                    const SizedBox(width: 8),
-                    Switch(
-                      value: isPresent,
-                      activeThumbColor: AppColors.success,
-                      activeTrackColor: AppColors.successContainer,
-                      onChanged: (val) {
-                        setState(() {
-                          _attendanceList[idx]['present'] = val;
-                        });
-                      },
+                    AppBadge(
+                      label: primaryFee.status == PaymentStatus.paid
+                          ? l10n.translate('fee_status_paid')
+                          : (primaryFee.status == PaymentStatus.partiallyPaid
+                                ? 'Partially Paid'
+                                : 'Unpaid'),
+                      variant: primaryFee.status == PaymentStatus.paid
+                          ? AppBadgeVariant.success
+                          : (primaryFee.status == PaymentStatus.partiallyPaid
+                                ? AppBadgeVariant.info
+                                : AppBadgeVariant.error),
                     ),
                   ],
                 ),
-              );
-            },
+                AppSpacing.gapSm,
+                Text(
+                  primaryFee.title,
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Assigned: ₹${primaryFee.amount.toStringAsFixed(0)} • Paid: ₹${primaryFee.paidAmount.toStringAsFixed(0)}',
+                  style: AppTypography.bodySmall,
+                ),
+                if (primaryFee.receiptNumber != null) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.successContainer,
+                      borderRadius: AppRadius.radiusSm,
+                    ),
+                    child: Text(
+                      'Official Receipt: ${primaryFee.receiptNumber}',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.onSuccessContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+                AppSpacing.gapMd,
+                AppButton.primary(
+                  text: l10n.translate('fee_record_payment'),
+                  icon: Icons.receipt_long_outlined,
+                  isCompact: true,
+                  fullWidth: false,
+                  onPressed: primaryFee.balanceDue == 0
+                      ? null
+                      : () => _recordManualPayment(primaryFee),
+                ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
 
-  // Principal View
+  // ==========================================
+  // REAL TEACHER VIEW
+  // ==========================================
+  Widget _buildTeacherDashboard(
+    BuildContext context,
+    AppLocalizations l10n,
+    ThemeData theme,
+  ) {
+    if (_isLoadingTeacher) {
+      return const AppLoadingIndicator(
+        message: 'Loading teacher class assignments...',
+      );
+    }
+
+    if (_teacherError != null) {
+      return AppErrorState(
+        title: 'Unable to Load Teacher Assignments',
+        message: _teacherError!,
+        onRetry: () => _loadTeacherData(forceRefresh: true),
+      );
+    }
+
+    if (_teacherAssignments.isEmpty) {
+      return AppCard(
+        child: AppEmptyState(
+          icon: Icons.assignment_late_outlined,
+          title: 'No Active Class Assignments',
+          description: 'You are not currently assigned to any class or subject in Firestore.',
+          actionLabel: 'Create Assignment',
+          onAction: () => _showCreateAssignmentDialog(),
+        ),
+      );
+    }
+
+    final assignment = _selectedAssignment ?? _teacherAssignments.first;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${l10n.translate('attendance_mark')} — Assigned: Class ${assignment.classId}-${assignment.sectionId}',
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    'Subject: ${assignment.subjectId ?? 'Class Teacher'} • Academic Year: ${assignment.academicYearId}',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: theme.colorScheme.onSurface.withAlpha(160),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_classStudents.isNotEmpty)
+              AppButton.primary(
+                text: _isSavingAttendance
+                    ? 'Saving...'
+                    : l10n.translate('save'),
+                icon: Icons.check,
+                isCompact: true,
+                fullWidth: false,
+                onPressed: _isSavingAttendance ? null : _saveAttendance,
+              ),
+          ],
+        ),
+        AppSpacing.gapMd,
+        if (_classStudents.isEmpty)
+          AppCard(
+            child: AppEmptyState(
+              icon: Icons.group_off_outlined,
+              title: 'No Students in Class',
+              description:
+                  'No active students found in Class ${assignment.classId}-${assignment.sectionId}.',
+              actionLabel: 'Enroll Student in Class',
+              onAction: () => _showAddStudentDialog(
+                prefillClass: assignment.classId,
+                prefillSec: assignment.sectionId,
+              ),
+            ),
+          )
+        else
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _classStudents.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (ctx, idx) {
+                final student = _classStudents[idx];
+                final isPresent = _attendanceMap[student.id] ?? true;
+
+                return ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 0,
+                  ),
+                  leading: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: AppColors.primaryContainer,
+                    child: Text(
+                      student.rollNumber,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    student.fullName,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Adm: ${student.admissionNumber}',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: theme.colorScheme.onSurface.withAlpha(140),
+                      fontSize: 10,
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppBadge(
+                        label: isPresent
+                            ? l10n.translate('attendance_present')
+                            : l10n.translate('attendance_absent'),
+                        variant: isPresent
+                            ? AppBadgeVariant.success
+                            : AppBadgeVariant.error,
+                      ),
+                      const SizedBox(width: 8),
+                      Switch(
+                        value: isPresent,
+                        activeThumbColor: AppColors.success,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        onChanged: (val) {
+                          setState(() {
+                            _attendanceMap[student.id] = val;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ==========================================
+  // REAL PRINCIPAL VIEW
+  // ==========================================
   Widget _buildPrincipalDashboard(
     BuildContext context,
     AppLocalizations l10n,
     ThemeData theme,
   ) {
+    if (_isLoadingPrincipal) {
+      return const AppLoadingIndicator(
+        message: 'Calculating aggregate school metrics...',
+      );
+    }
+
+    if (_principalError != null) {
+      return AppErrorState(
+        title: 'Unable to Load Administrative Metrics',
+        message: _principalError!,
+        onRetry: () => _loadPrincipalData(forceRefresh: true),
+      );
+    }
+
+    final totalCollected = _schoolFeeMetrics?['totalCollected'] ?? 0.0;
+    final pendingBalance = _schoolFeeMetrics?['pendingBalance'] ?? 0.0;
+    final totalStudents = _totalStudentsCount ?? 0;
+    final totalAssignments = _activeTeacherAssignmentsCount ?? 0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'MPS Administrative & Security Overview',
-          style: AppTypography.titleLarge,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'MPS Administrative & Security Overview',
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Authoritative Firestore academic and financial metrics',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: theme.colorScheme.onSurface.withAlpha(160),
+                  ),
+                ),
+              ],
+            ),
+            Wrap(
+              spacing: 8,
+              children: [
+                AppButton.outlined(
+                  text: 'Add Student',
+                  icon: Icons.person_add,
+                  isCompact: true,
+                  fullWidth: false,
+                  onPressed: () => _showAddStudentDialog(),
+                ),
+                AppButton.outlined(
+                  text: 'Assign Teacher',
+                  icon: Icons.assignment_ind,
+                  isCompact: true,
+                  fullWidth: false,
+                  onPressed: () => _showCreateAssignmentDialog(),
+                ),
+              ],
+            ),
+          ],
         ),
         AppSpacing.gapMd,
-        Wrap(
-          spacing: AppSpacing.md,
-          runSpacing: AppSpacing.md,
+        ResponsiveGrid(
+          targetItemWidth: 240.0,
           children: [
-            _buildMetricCard(
+            AppStatCard(
               title: l10n.translate('fee_total_collected'),
-              value: '₹14,500',
-              badge: 'Manual Offline',
-              badgeVariant: AppBadgeVariant.success,
+              value: '₹${totalCollected.toStringAsFixed(0)}',
+              badge: pendingBalance > 0
+                  ? '₹${pendingBalance.toStringAsFixed(0)} Due'
+                  : 'All Cleared',
+              badgeVariant: pendingBalance > 0
+                  ? AppBadgeVariant.warning
+                  : AppBadgeVariant.success,
               icon: Icons.receipt_outlined,
             ),
-            _buildMetricCard(
-              title: 'Active Teacher Assignments',
-              value: '1 Verified',
-              badge: 'Class 6A',
+            AppStatCard(
+              title: 'Enrolled Students',
+              value: '$totalStudents Enrolled',
+              badge: totalStudents > 0 ? 'Active' : 'Empty Database',
+              badgeVariant: totalStudents > 0
+                  ? AppBadgeVariant.success
+                  : AppBadgeVariant.info,
+              icon: Icons.people_outline,
+            ),
+            AppStatCard(
+              title: 'Teacher Assignments',
+              value: '$totalAssignments Verified',
+              badge: 'Academic Year 26-27',
               badgeVariant: AppBadgeVariant.info,
               icon: Icons.assignment_ind_outlined,
             ),
           ],
         ),
-        AppSpacing.gapLg,
+        AppSpacing.gapMd,
         AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Security Architecture Status',
-                  style: AppTypography.titleMedium),
+              Text(
+                'Authoritative Data Architecture',
+                style: AppTypography.titleMedium,
+              ),
               AppSpacing.gapSm,
               Text(
-                '• Firestore Security Rules: Strict teacher assignment checks active\n'
-                '• Online Payment Gateway: Disabled (Offline manual recording only)\n'
-                '• Direct ID Bypass Prevention: Enforced server-side\n'
-                '• Audit Logging: Append-only immutable logs enabled',
-                style: AppTypography.bodyMedium,
+                '• Firestore is the single authoritative source of truth\n'
+                '• Scoped CacheManager prevents redundant reads with TTL eviction\n'
+                '• Offline Persistence enabled via Firebase Firestore SDK\n'
+                '• Strict Teacher Assignment boundaries enforced on attendance and marks\n'
+                '• Manual Payment Provider preserves full financial audit trail',
+                style: AppTypography.bodySmall.copyWith(height: 1.6),
               ),
             ],
           ),
@@ -817,209 +1398,97 @@ class _MPSScreenState extends State<MPSScreen> {
     );
   }
 
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required String badge,
-    required AppBadgeVariant badgeVariant,
-    required IconData icon,
-  }) {
+  Widget _buildNavigationRail(AppLocalizations l10n) {
+    return NavigationRail(
+      selectedIndex: _selectedNavIndex,
+      onDestinationSelected: (idx) => setState(() => _selectedNavIndex = idx),
+      labelType: NavigationRailLabelType.selected,
+      minWidth: 56,
+      destinations: [
+        NavigationRailDestination(
+          icon: const Icon(Icons.dashboard_outlined, size: 20),
+          selectedIcon: const Icon(Icons.dashboard, size: 20),
+          label: Text(l10n.translate('dashboard')),
+        ),
+        NavigationRailDestination(
+          icon: const Icon(Icons.how_to_reg_outlined, size: 20),
+          selectedIcon: const Icon(Icons.how_to_reg, size: 20),
+          label: Text(l10n.translate('attendance')),
+        ),
+        NavigationRailDestination(
+          icon: const Icon(Icons.receipt_long_outlined, size: 20),
+          selectedIcon: const Icon(Icons.receipt_long, size: 20),
+          label: Text(l10n.translate('fees')),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopSidebar(AppLocalizations l10n, ThemeData theme) {
     return SizedBox(
-      width: 260,
-      child: AppCard(
+      width: 220,
+      child: Material(
+        color: theme.colorScheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(icon, color: AppColors.primary, size: 24),
-                AppBadge(label: badge, variant: badgeVariant),
-              ],
-            ),
-            AppSpacing.gapMd,
-            Text(title, style: AppTypography.bodySmall),
-            AppSpacing.gapXs,
-            Text(
-              value,
-              style: AppTypography.headlineMedium.copyWith(
-                fontWeight: FontWeight.bold,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: AppRadius.radiusSm,
+                    ),
+                    child: const Icon(
+                      Icons.school,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'MPS Portal',
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- TAB 2: Access Control Simulation ---
-  Widget _buildAccessControlContent(BuildContext context, AppLocalizations l10n) {
-    // Simulated attempts
-    const student6B = Student(
-      id: 'std_6B_099',
-      admissionNumber: 'MPS-2026-99',
-      fullName: 'Student in 6-B',
-      classId: '6',
-      section: 'B',
-      rollNumber: '99',
-      parentUserIds: ['parent_99'],
-    );
-
-    final canTeacherRead6A = _authService.canAccessStudent(
-      actorRole: UserRole.teacher,
-      teacherAssignments: _activeTeacherAssignments,
-      student: _activeStudent,
-    );
-
-    final canTeacherRead6B = _authService.canAccessStudent(
-      actorRole: UserRole.teacher,
-      teacherAssignments: _activeTeacherAssignments,
-      student: student6B,
-    );
-
-    final canTeacherEditEnglishMarks = _authService.canManageMarks(
-      actorRole: UserRole.teacher,
-      teacherAssignments: _activeTeacherAssignments,
-      classId: '6',
-      sectionId: 'A',
-      subjectId: 'english',
-    );
-
-    final canTeacherModifyFees = _authService.canManageFees(
-      actorRole: UserRole.teacher,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Teacher Access Control Verification', style: AppTypography.titleLarge),
-        Text(
-          'Simulated against active assignment: Teacher A → Class 6A (Mathematics)',
-          style: AppTypography.bodySmall,
-        ),
-        AppSpacing.gapMd,
-        _buildSecurityCheckCard(
-          title: 'Test 1: Read assigned Class 6A student',
-          isAllowed: canTeacherRead6A,
-          detail: 'Teacher A has explicit assignment to Class 6A.',
-        ),
-        AppSpacing.gapSm,
-        _buildSecurityCheckCard(
-          title: 'Test 2: Read unassigned Class 6B student',
-          isAllowed: canTeacherRead6B,
-          detail: 'Access denied: Teacher A has no assignment to Section B.',
-        ),
-        AppSpacing.gapSm,
-        _buildSecurityCheckCard(
-          title: 'Test 5: Direct ID query bypass attempt on 6B',
-          isAllowed: canTeacherRead6B,
-          detail: 'Knowing document ID "std_6B_099" is blocked at security layer.',
-        ),
-        AppSpacing.gapSm,
-        _buildSecurityCheckCard(
-          title: 'Test 6: Modify English marks (Unassigned Subject)',
-          isAllowed: canTeacherEditEnglishMarks,
-          detail: 'Teacher A is subject teacher for Mathematics only. English marks denied.',
-        ),
-        AppSpacing.gapSm,
-        _buildSecurityCheckCard(
-          title: 'Test 8: Modify Fee Records',
-          isAllowed: canTeacherModifyFees,
-          detail: 'Financial data is strictly restricted to Principal / Accountant roles.',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecurityCheckCard({
-    required String title,
-    required bool isAllowed,
-    required String detail,
-  }) {
-    return AppCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            isAllowed ? Icons.check_circle : Icons.block,
-            color: isAllowed ? AppColors.success : AppColors.error,
-            size: 24,
-          ),
-          AppSpacing.gapMd,
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(title, style: AppTypography.titleMedium),
-                    ),
-                    AppBadge(
-                      label: isAllowed ? 'ALLOW' : 'DENY',
-                      variant: isAllowed
-                          ? AppBadgeVariant.success
-                          : AppBadgeVariant.error,
-                    ),
-                  ],
-                ),
-                AppSpacing.gapXs,
-                Text(
-                  detail,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withAlpha(160),
-                  ),
-                ),
-              ],
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.dashboard, size: 18),
+              title: Text(
+                l10n.translate('dashboard'),
+                style: AppTypography.bodyMedium,
+              ),
+              selected: _selectedNavIndex == 0,
+              onTap: () => setState(() => _selectedNavIndex = 0),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- TAB 3: State Simulation ---
-  Widget _buildStateSimulationContent(
-    BuildContext context,
-    AppLocalizations l10n,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('State Simulation (Rule 2 & Rule 17)', style: AppTypography.titleLarge),
-        AppSpacing.gapMd,
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            ElevatedButton(
-              onPressed: () =>
-                  setState(() => _currentViewState = DemoViewState.content),
-              child: const Text('Content View'),
+            ListTile(
+              leading: const Icon(Icons.how_to_reg, size: 18),
+              title: Text(
+                l10n.translate('attendance'),
+                style: AppTypography.bodyMedium,
+              ),
+              selected: _selectedNavIndex == 1,
+              onTap: () => setState(() => _selectedNavIndex = 1),
             ),
-            ElevatedButton(
-              onPressed: () =>
-                  setState(() => _currentViewState = DemoViewState.loading),
-              child: const Text('Loading View'),
-            ),
-            ElevatedButton(
-              onPressed: () =>
-                  setState(() => _currentViewState = DemoViewState.empty),
-              child: const Text('Empty View'),
-            ),
-            ElevatedButton(
-              onPressed: () =>
-                  setState(() => _currentViewState = DemoViewState.error),
-              child: const Text('Error View'),
+            ListTile(
+              leading: const Icon(Icons.receipt_long, size: 18),
+              title: Text(
+                l10n.translate('fees'),
+                style: AppTypography.bodyMedium,
+              ),
+              selected: _selectedNavIndex == 2,
+              onTap: () => setState(() => _selectedNavIndex = 2),
             ),
           ],
         ),
-        AppSpacing.gapLg,
-        AppCard(
-          child: _buildDashboardContent(context, l10n, Theme.of(context)),
-        ),
-      ],
+      ),
     );
   }
 }

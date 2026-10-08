@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 import 'app_radius.dart';
-import 'app_spacing.dart';
 
 /// AppTheme builds complete Material 3 Light and Dark ThemeData
 /// adhering to UI/UX Pro Max and workspace rule specifications.
@@ -66,36 +65,37 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
-          minimumSize: const Size(double.infinity, 48),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-          elevation: 0,
-          textStyle: AppTypography.labelLarge,
+          minimumSize: const Size(double.infinity, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
+          elevation: 1,
+          textStyle: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
-          minimumSize: const Size(double.infinity, 48),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-          side: const BorderSide(color: AppColors.primary, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-          textStyle: AppTypography.labelLarge,
+          minimumSize: const Size(double.infinity, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          side: const BorderSide(color: AppColors.primary, width: 1.2),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
+          textStyle: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
-          minimumSize: const Size(48, 48),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          minimumSize: const Size(40, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
           shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
-          textStyle: AppTypography.labelLarge,
+          textStyle: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
+        isDense: true,
         fillColor: AppColors.lightSurface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: AppRadius.radiusSm,
           borderSide: const BorderSide(color: AppColors.lightBorder),
@@ -183,36 +183,37 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF6366F1),
           foregroundColor: Colors.white,
-          minimumSize: const Size(double.infinity, 48),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-          elevation: 0,
-          textStyle: AppTypography.labelLarge,
+          minimumSize: const Size(double.infinity, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
+          elevation: 1,
+          textStyle: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF818CF8),
-          minimumSize: const Size(double.infinity, 48),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-          side: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-          textStyle: AppTypography.labelLarge,
+          minimumSize: const Size(double.infinity, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          side: const BorderSide(color: Color(0xFF6366F1), width: 1.2),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
+          textStyle: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: const Color(0xFF818CF8),
-          minimumSize: const Size(48, 48),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          minimumSize: const Size(40, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
           shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
-          textStyle: AppTypography.labelLarge,
+          textStyle: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
+        isDense: true,
         fillColor: AppColors.darkSurface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: AppRadius.radiusSm,
           borderSide: const BorderSide(color: AppColors.darkBorder),

@@ -31,6 +31,14 @@ class AuthorizationError extends AppError {
   ]) : super(code: code, cause: cause);
 }
 
+class DatabaseError extends AppError {
+  const DatabaseError([
+    super.message = 'Database operation failed',
+    String? code,
+    Object? cause,
+  ]) : super(code: code, cause: cause);
+}
+
 class ValidationError extends AppError {
   final Map<String, String> fieldErrors;
 

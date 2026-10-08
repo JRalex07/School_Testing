@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
-
+import '../constants/app_constants.dart';
+import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
-/// Accessible text field with clear label, helper text, error text, and keyboard support.
+/// Compact and responsive text field:
+/// - Compact height (~40dp) with dense content padding
+/// - Maximum width constraint preventing endless stretching on desktop/wide viewports
+/// - Clear accessible label, helper, error slot, and tactile focus border
 class AppTextField extends StatelessWidget {
   final String label;
   final String? hint;
@@ -19,6 +23,7 @@ class AppTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final bool readOnly;
   final int maxLines;
+  final double? maxWidth;
 
   const AppTextField({
     super.key,
@@ -36,11 +41,12 @@ class AppTextField extends StatelessWidget {
     this.suffixIcon,
     this.readOnly = false,
     this.maxLines = 1,
+    this.maxWidth = AppConstants.maxFormWidth,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    Widget field = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -62,12 +68,17 @@ class AppTextField extends StatelessWidget {
           onChanged: onChanged,
           onEditingComplete: onEditingComplete,
           decoration: InputDecoration(
+            isDense: true,
             hintText: hint,
             helperText: helperText,
             errorText: errorText,
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
-            helperMaxLines: 2,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: AppRadius.radiusSm,
+            ),
+            helperMaxLines: 1,
             errorMaxLines: 2,
           ),
           style: AppTypography.bodyMedium.copyWith(
@@ -76,5 +87,14 @@ class AppTextField extends StatelessWidget {
         ),
       ],
     );
+
+    if (maxWidth != null) {
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth!),
+        child: field,
+      );
+    }
+
+    return field;
   }
 }

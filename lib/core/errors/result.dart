@@ -4,6 +4,9 @@ import 'app_error.dart';
 sealed class Result<T> {
   const Result();
 
+  const factory Result.success(T data) = Success<T>;
+  const factory Result.failure(AppError error) = Failure<T>;
+
   bool get isSuccess => this is Success<T>;
   bool get isFailure => this is Failure<T>;
 
