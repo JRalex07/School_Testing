@@ -9,14 +9,17 @@ import '../../domain/repositories/attendance_repository.dart';
 
 /// Production Firestore implementation for Attendance with Caching (Rule 9).
 class FirebaseAttendanceRepository implements AttendanceRepository {
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? _customFirestore;
   final CacheManager _cache;
 
   FirebaseAttendanceRepository({
     FirebaseFirestore? firestore,
     CacheManager? cache,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _customFirestore = firestore,
         _cache = cache ?? CacheManager();
+
+  FirebaseFirestore get _firestore =>
+      _customFirestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _attendanceRef =>
       _firestore.collection('attendance');

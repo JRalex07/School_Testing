@@ -10,14 +10,17 @@ import '../../domain/repositories/teacher_assignment_repository.dart';
 /// Production Firestore implementation for Teacher Assignments with Caching.
 class FirebaseTeacherAssignmentRepository
     implements TeacherAssignmentRepository {
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? _customFirestore;
   final CacheManager _cache;
 
   FirebaseTeacherAssignmentRepository({
     FirebaseFirestore? firestore,
     CacheManager? cache,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _cache = cache ?? CacheManager();
+  }) : _customFirestore = firestore,
+       _cache = cache ?? CacheManager();
+
+  FirebaseFirestore get _firestore =>
+      _customFirestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _assignmentsRef =>
       _firestore.collection('teacherAssignments');
@@ -66,7 +69,9 @@ class FirebaseTeacherAssignmentRepository
     }
 
     try {
-      _logFirestore('READ /teacherAssignments count academicYear=$academicYearId');
+      _logFirestore(
+        'READ /teacherAssignments count academicYear=$academicYearId',
+      );
       final query = _assignmentsRef.where('isActive', isEqualTo: true);
       final aggregate = await query.count().get();
       final count = aggregate.count ?? 0;

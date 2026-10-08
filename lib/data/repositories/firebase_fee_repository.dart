@@ -10,14 +10,17 @@ import '../../domain/repositories/fee_repository.dart';
 
 /// Production Firestore implementation for Fee Management & Manual Payments (Rule 8).
 class FirebaseFeeRepository implements FeeRepository {
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? _customFirestore;
   final CacheManager _cache;
 
   FirebaseFeeRepository({
     FirebaseFirestore? firestore,
     CacheManager? cache,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _customFirestore = firestore,
         _cache = cache ?? CacheManager();
+
+  FirebaseFirestore get _firestore =>
+      _customFirestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _feesRef =>
       _firestore.collection('fees');

@@ -21,6 +21,9 @@ class AppTextField extends StatelessWidget {
   final VoidCallback? onEditingComplete;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
+  final String? prefixText;
+  final int? maxLength;
+  final bool enabled;
   final bool readOnly;
   final int maxLines;
   final double? maxWidth;
@@ -39,6 +42,9 @@ class AppTextField extends StatelessWidget {
     this.onEditingComplete,
     this.prefixIcon,
     this.suffixIcon,
+    this.prefixText,
+    this.maxLength,
+    this.enabled = true,
     this.readOnly = false,
     this.maxLines = 1,
     this.maxWidth = AppConstants.maxFormWidth,
@@ -64,6 +70,8 @@ class AppTextField extends StatelessWidget {
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           readOnly: readOnly,
+          enabled: enabled,
+          maxLength: maxLength,
           maxLines: maxLines,
           onChanged: onChanged,
           onEditingComplete: onEditingComplete,
@@ -74,6 +82,8 @@ class AppTextField extends StatelessWidget {
             errorText: errorText,
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
+            prefixText: prefixText,
+            counterText: '',
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             border: OutlineInputBorder(
               borderRadius: AppRadius.radiusSm,

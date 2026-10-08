@@ -20,6 +20,7 @@ import 'core/widgets/app_stat_card.dart';
 import 'core/widgets/app_text_field.dart';
 import 'core/widgets/responsive_layout.dart';
 import 'data/repositories/firebase_attendance_repository.dart';
+import 'data/repositories/firebase_auth_repository.dart';
 import 'data/repositories/firebase_fee_repository.dart';
 import 'data/repositories/firebase_student_repository.dart';
 import 'data/repositories/firebase_teacher_assignment_repository.dart';
@@ -27,12 +28,16 @@ import 'domain/models/attendance_record.dart';
 import 'domain/models/fee_record.dart';
 import 'domain/models/student.dart';
 import 'domain/models/teacher_assignment.dart';
+import 'domain/models/user_profile.dart';
 import 'domain/models/user_role.dart';
 import 'domain/repositories/attendance_repository.dart';
+import 'domain/repositories/auth_repository.dart';
 import 'domain/repositories/fee_repository.dart';
 import 'domain/repositories/student_repository.dart';
 import 'domain/repositories/teacher_assignment_repository.dart';
 import 'firebase_options.dart';
+import 'presentation/admin/staff_provisioning_screen.dart';
+import 'presentation/auth/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +57,22 @@ void main() async {
 }
 
 class MPSApp extends StatefulWidget {
-  const MPSApp({super.key});
+  final AuthRepository? authRepository;
+  final StudentRepository? studentRepository;
+  final AttendanceRepository? attendanceRepository;
+  final FeeRepository? feeRepository;
+  final TeacherAssignmentRepository? assignmentRepository;
+  final UserProfile? initialProfile;
+
+  const MPSApp({
+    super.key,
+    this.authRepository,
+    this.studentRepository,
+    this.attendanceRepository,
+    this.feeRepository,
+    this.assignmentRepository,
+    this.initialProfile,
+  });
 
   @override
   State<MPSApp> createState() => _MPSAppState();
@@ -61,6 +81,54 @@ class MPSApp extends StatefulWidget {
 class _MPSAppState extends State<MPSApp> {
   ThemeMode _themeMode = ThemeMode.light;
   Locale _locale = const Locale('en');
+
+  late final AuthRepository _authRepository =
+      widget.authRepository ?? FirebaseAuthRepository();
+
+  UserProfile? _currentUserProfile;
+  bool _isCheckingAuth = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialProfile != null) {
+      _currentUserProfile = widget.initialProfile;
+      _isCheckingAuth = false;
+    } else {
+      _checkInitialAuthState();
+    }
+  }
+
+  Future<void> _checkInitialAuthState() async {
+    try {
+      final profileResult = await _authRepository.getCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _currentUserProfile = profileResult.dataOrNull;
+          _isCheckingAuth = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isCheckingAuth = false);
+      }
+    }
+  }
+
+  void _onLoginSuccess(UserProfile profile) {
+    setState(() {
+      _currentUserProfile = profile;
+    });
+  }
+
+  Future<void> _onSignOut() async {
+    await _authRepository.signOut();
+    if (mounted) {
+      setState(() {
+        _currentUserProfile = null;
+      });
+    }
+  }
 
   void _toggleTheme() {
     setState(() {
@@ -94,28 +162,66 @@ class _MPSAppState extends State<MPSApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: MPSScreen(
-        onToggleTheme: _toggleTheme,
-        onToggleLocale: _toggleLocale,
-        isDarkMode: _themeMode == ThemeMode.dark,
-        currentLocale: _locale,
-      ),
+      home: _isCheckingAuth
+          ? const Scaffold(
+              body: Center(
+                child: AppLoadingIndicator(
+                  message: 'Checking authentication session...',
+                ),
+              ),
+            )
+          : _currentUserProfile == null
+              ? LoginScreen(
+                  authRepository: _authRepository,
+                  onLoginSuccess: _onLoginSuccess,
+                  onToggleTheme: _toggleTheme,
+                  onToggleLocale: _toggleLocale,
+                  isDarkMode: _themeMode == ThemeMode.dark,
+                  currentLocale: _locale,
+                )
+              : MPSScreen(
+                  userProfile: _currentUserProfile!,
+                  authRepository: _authRepository,
+                  onSignOut: _onSignOut,
+                  onToggleTheme: _toggleTheme,
+                  onToggleLocale: _toggleLocale,
+                  isDarkMode: _themeMode == ThemeMode.dark,
+                  currentLocale: _locale,
+                  studentRepository: widget.studentRepository,
+                  attendanceRepository: widget.attendanceRepository,
+                  feeRepository: widget.feeRepository,
+                  assignmentRepository: widget.assignmentRepository,
+                ),
     );
   }
 }
 
 class MPSScreen extends StatefulWidget {
+  final UserProfile userProfile;
+  final AuthRepository authRepository;
+  final Future<void> Function() onSignOut;
   final VoidCallback onToggleTheme;
   final VoidCallback onToggleLocale;
   final bool isDarkMode;
   final Locale currentLocale;
+  final StudentRepository? studentRepository;
+  final AttendanceRepository? attendanceRepository;
+  final FeeRepository? feeRepository;
+  final TeacherAssignmentRepository? assignmentRepository;
 
   const MPSScreen({
     super.key,
+    required this.userProfile,
+    required this.authRepository,
+    required this.onSignOut,
     required this.onToggleTheme,
     required this.onToggleLocale,
     required this.isDarkMode,
     required this.currentLocale,
+    this.studentRepository,
+    this.attendanceRepository,
+    this.feeRepository,
+    this.assignmentRepository,
   });
 
   @override
@@ -123,21 +229,21 @@ class MPSScreen extends StatefulWidget {
 }
 
 class _MPSScreenState extends State<MPSScreen> {
-  UserRole _selectedRole = UserRole.parent;
+  late UserRole _selectedRole = widget.userProfile.role;
   int _selectedNavIndex = 0;
 
   // Authoritative Repositories with Scoped Caching
-  final StudentRepository _studentRepository = FirebaseStudentRepository();
-  final AttendanceRepository _attendanceRepository =
-      FirebaseAttendanceRepository();
-  final FeeRepository _feeRepository = FirebaseFeeRepository();
-  final TeacherAssignmentRepository _assignmentRepository =
-      FirebaseTeacherAssignmentRepository();
+  late final StudentRepository _studentRepository =
+      widget.studentRepository ?? FirebaseStudentRepository();
+  late final AttendanceRepository _attendanceRepository =
+      widget.attendanceRepository ?? FirebaseAttendanceRepository();
+  late final FeeRepository _feeRepository =
+      widget.feeRepository ?? FirebaseFeeRepository();
+  late final TeacherAssignmentRepository _assignmentRepository =
+      widget.assignmentRepository ?? FirebaseTeacherAssignmentRepository();
 
   // Active School ID
   static const String _schoolId = 'mps_main';
-  static const String _defaultParentId = 'parent_user_01';
-  static const String _defaultTeacherId = 'teacher_user_01';
 
   // --- Parent State ---
   List<Student> _parentStudents = [];
@@ -170,6 +276,10 @@ class _MPSScreenState extends State<MPSScreen> {
   }
 
   void _onRoleChanged(UserRole newRole) {
+    if (!widget.userProfile.role.isPrincipal) {
+      // Non-principal users cannot change roles (Rule 5 & 15)
+      return;
+    }
     setState(() => _selectedRole = newRole);
     _loadDataForRole(newRole);
   }
@@ -200,14 +310,15 @@ class _MPSScreenState extends State<MPSScreen> {
       _parentError = null;
     });
 
+    final parentId = widget.userProfile.uid;
+
     if (forceRefresh) {
-      CacheManager().invalidateTag('parent_$_defaultParentId');
+      CacheManager().invalidateTag('parent_$parentId');
     }
 
     try {
-      final studentsResult = await _studentRepository.getStudentsForParent(
-        _defaultParentId,
-      );
+      final studentsResult =
+          await _studentRepository.getStudentsForParent(parentId);
 
       if (studentsResult.isFailure) {
         setState(() {
@@ -221,8 +332,7 @@ class _MPSScreenState extends State<MPSScreen> {
       _parentStudents = students;
 
       if (students.isNotEmpty) {
-        _selectedStudent =
-            _selectedStudent != null &&
+        _selectedStudent = _selectedStudent != null &&
                 students.any((s) => s.id == _selectedStudent!.id)
             ? _selectedStudent
             : students.first;
@@ -244,9 +354,7 @@ class _MPSScreenState extends State<MPSScreen> {
 
   Future<void> _loadStudentFinancialsAndAttendance(String studentId) async {
     final feesResult = await _feeRepository.getFeesForStudent(studentId);
-    final attResult = await _attendanceRepository.getStudentAttendance(
-      studentId,
-    );
+    final attResult = await _attendanceRepository.getStudentAttendance(studentId);
 
     if (mounted) {
       setState(() {
@@ -262,14 +370,25 @@ class _MPSScreenState extends State<MPSScreen> {
       _teacherError = null;
     });
 
+    final teacherId = widget.userProfile.uid.isNotEmpty
+        ? widget.userProfile.uid
+        : widget.userProfile.phoneNumber;
+
     if (forceRefresh) {
-      CacheManager().invalidateTag('teacher_$_defaultTeacherId');
+      CacheManager().invalidateTag('teacher_$teacherId');
     }
 
     try {
-      final assignResult = await _assignmentRepository.getTeacherAssignments(
-        _defaultTeacherId,
-      );
+      // Query assignments strictly bound to authenticated teacher (Rule 5)
+      var assignResult =
+          await _assignmentRepository.getTeacherAssignments(teacherId);
+
+      // If no assignments by UID, try phone number
+      if ((assignResult.dataOrNull ?? []).isEmpty &&
+          widget.userProfile.phoneNumber.isNotEmpty) {
+        assignResult = await _assignmentRepository
+            .getTeacherAssignments(widget.userProfile.phoneNumber);
+      }
 
       if (assignResult.isFailure) {
         setState(() {
@@ -283,8 +402,7 @@ class _MPSScreenState extends State<MPSScreen> {
       _teacherAssignments = assignments;
 
       if (assignments.isNotEmpty) {
-        _selectedAssignment =
-            _selectedAssignment != null &&
+        _selectedAssignment = _selectedAssignment != null &&
                 assignments.any((a) => a.id == _selectedAssignment!.id)
             ? _selectedAssignment
             : assignments.first;
@@ -333,7 +451,7 @@ class _MPSScreenState extends State<MPSScreen> {
           section: s.section,
           date: today,
           status: AttendanceStatus.present,
-          markedByUserId: _defaultTeacherId,
+          markedByUserId: widget.userProfile.uid,
           markedAt: today,
         ),
       );
@@ -362,9 +480,10 @@ class _MPSScreenState extends State<MPSScreen> {
 
     try {
       final stdCountRes = await _studentRepository.getTotalStudentCount();
-      final assignCountRes = await _assignmentRepository
-          .getActiveAssignmentCount('2026-2027');
-      final feeMetricsRes = await _feeRepository.getSchoolFeeMetrics(_schoolId);
+      final assignCountRes =
+          await _assignmentRepository.getActiveAssignmentCount('2026-2027');
+      final feeMetricsRes =
+          await _feeRepository.getSchoolFeeMetrics(_schoolId);
 
       if (mounted) {
         setState(() {
@@ -391,8 +510,7 @@ class _MPSScreenState extends State<MPSScreen> {
   void _showAddStudentDialog({String? prefillClass, String? prefillSec}) {
     final nameCtrl = TextEditingController();
     final admCtrl = TextEditingController(
-      text:
-          'MPS-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+      text: 'MPS-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
     );
     final classCtrl = TextEditingController(text: prefillClass ?? '6');
     final secCtrl = TextEditingController(text: prefillSec ?? 'A');
@@ -445,7 +563,7 @@ class _MPSScreenState extends State<MPSScreen> {
                 classId: classCtrl.text.trim(),
                 section: secCtrl.text.trim().toUpperCase(),
                 rollNumber: rollCtrl.text.trim(),
-                parentUserIds: [_defaultParentId],
+                parentUserIds: [widget.userProfile.uid],
                 isActive: true,
               );
 
@@ -496,7 +614,7 @@ class _MPSScreenState extends State<MPSScreen> {
               Navigator.pop(ctx);
               final assignment = TeacherAssignment(
                 id: '',
-                teacherId: _defaultTeacherId,
+                teacherId: widget.userProfile.uid,
                 academicYearId: '2026-2027',
                 classId: classCtrl.text.trim(),
                 sectionId: secCtrl.text.trim().toUpperCase(),
@@ -505,9 +623,8 @@ class _MPSScreenState extends State<MPSScreen> {
                 assignedAt: DateTime.now(),
               );
 
-              final result = await _assignmentRepository.assignTeacher(
-                assignment,
-              );
+              final result =
+                  await _assignmentRepository.assignTeacher(assignment);
               if (result.isSuccess && mounted) {
                 AppDialog.showAlert(
                   context: context,
@@ -566,7 +683,7 @@ class _MPSScreenState extends State<MPSScreen> {
                 paidAmount: 0.0,
                 dueDate: DateTime.now().add(const Duration(days: 30)),
                 status: PaymentStatus.unpaid,
-                auditCreatedBy: 'admin_principal',
+                auditCreatedBy: widget.userProfile.uid,
                 auditCreatedAt: DateTime.now(),
               );
 
@@ -597,9 +714,8 @@ class _MPSScreenState extends State<MPSScreen> {
       feeRecord: fee,
       amount: fee.balanceDue,
       paymentMethod: PaymentMethod.cash,
-      referenceNumber:
-          'CASH-CNTR-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-      recordedByUserId: 'fee_counter_01',
+      referenceNumber: 'CASH-CNTR-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+      recordedByUserId: widget.userProfile.uid,
       notes: 'Fee counter cash receipt settlement',
     );
 
@@ -639,14 +755,14 @@ class _MPSScreenState extends State<MPSScreen> {
         section: _selectedAssignment!.sectionId,
         date: today,
         status: isPresent ? AttendanceStatus.present : AttendanceStatus.absent,
-        markedByUserId: _defaultTeacherId,
+        markedByUserId: widget.userProfile.uid,
         markedAt: today,
       );
     }).toList();
 
     final result = await _attendanceRepository.saveAttendance(
       records: records,
-      teacherUserId: _defaultTeacherId,
+      teacherUserId: widget.userProfile.uid,
     );
 
     if (mounted) {
@@ -666,6 +782,35 @@ class _MPSScreenState extends State<MPSScreen> {
         );
       }
     }
+  }
+
+  void _confirmSignOut() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign Out of MPS'),
+        content: const Text(
+          'Are you sure you want to sign out? Your session and private cache will be cleared.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              widget.onSignOut();
+            },
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ==========================================
@@ -742,13 +887,27 @@ class _MPSScreenState extends State<MPSScreen> {
           ),
           const SizedBox(width: 10),
           Flexible(
-            child: Text(
-              l10n.translate('app_title'),
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  AppConstants.appName,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                Text(
+                  '${widget.userProfile.fullName} (${widget.userProfile.role.value.toUpperCase()})',
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.labelSmall.copyWith(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(160),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -761,8 +920,8 @@ class _MPSScreenState extends State<MPSScreen> {
         ),
         IconButton(
           tooltip: widget.currentLocale.languageCode == 'en'
-              ? 'Switch to Hindi'
-              : 'अंग्रेजी में बदलें',
+              ? 'हिंदी'
+              : 'English',
           icon: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -787,6 +946,11 @@ class _MPSScreenState extends State<MPSScreen> {
           ),
           onPressed: widget.onToggleTheme,
         ),
+        IconButton(
+          tooltip: 'Sign Out',
+          icon: const Icon(Icons.logout, size: 18, color: AppColors.error),
+          onPressed: _confirmSignOut,
+        ),
         const SizedBox(width: 8),
       ],
     );
@@ -805,8 +969,10 @@ class _MPSScreenState extends State<MPSScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildRoleSelectorCard(l10n),
-              AppSpacing.gapMd,
+              if (widget.userProfile.role.isPrincipal) ...[
+                _buildRoleSelectorCard(l10n),
+                AppSpacing.gapMd,
+              ],
               _buildRoleDashboard(context, l10n, theme),
             ],
           ),
@@ -820,10 +986,11 @@ class _MPSScreenState extends State<MPSScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.badge_outlined, color: AppColors.primary, size: 18),
+          const Icon(Icons.admin_panel_settings_outlined,
+              color: AppColors.primary, size: 18),
           const SizedBox(width: 8),
           Text(
-            'ROLE:',
+            'ADMIN VIEW:',
             style: AppTypography.labelSmall.copyWith(
               fontWeight: FontWeight.w700,
               letterSpacing: 0.8,
@@ -836,9 +1003,9 @@ class _MPSScreenState extends State<MPSScreen> {
               runSpacing: 6,
               children: [
                 _buildRoleChip(
-                  UserRole.parent,
-                  l10n.translate('role_parent'),
-                  Icons.family_restroom,
+                  UserRole.principal,
+                  l10n.translate('role_principal'),
+                  Icons.admin_panel_settings,
                 ),
                 _buildRoleChip(
                   UserRole.teacher,
@@ -846,9 +1013,9 @@ class _MPSScreenState extends State<MPSScreen> {
                   Icons.person,
                 ),
                 _buildRoleChip(
-                  UserRole.principal,
-                  l10n.translate('role_principal'),
-                  Icons.admin_panel_settings,
+                  UserRole.parent,
+                  l10n.translate('role_parent'),
+                  Icons.family_restroom,
                 ),
               ],
             ),
@@ -915,9 +1082,7 @@ class _MPSScreenState extends State<MPSScreen> {
     ThemeData theme,
   ) {
     if (_isLoadingParent) {
-      return const AppLoadingIndicator(
-        message: 'Loading verified student records...',
-      );
+      return const AppLoadingIndicator(message: 'Loading verified student records...');
     }
 
     if (_parentError != null) {
@@ -933,7 +1098,8 @@ class _MPSScreenState extends State<MPSScreen> {
         child: AppEmptyState(
           icon: Icons.person_off_outlined,
           title: 'No Linked Children Found',
-          description: 'No enrolled students are currently linked to this parent account in Firestore.',
+          description:
+              'No enrolled students are currently linked to this parent account in Firestore.',
           actionLabel: 'Enroll First Student',
           onAction: () => _showAddStudentDialog(),
         ),
@@ -942,9 +1108,8 @@ class _MPSScreenState extends State<MPSScreen> {
 
     final student = _selectedStudent ?? _parentStudents.first;
     final totalAttendance = _studentAttendanceRecords.length;
-    final presentCount = _studentAttendanceRecords
-        .where((r) => r.isPresent)
-        .length;
+    final presentCount =
+        _studentAttendanceRecords.where((r) => r.isPresent).length;
     final attendanceRate = totalAttendance > 0
         ? ((presentCount / totalAttendance) * 100).toStringAsFixed(0)
         : null;
@@ -1046,13 +1211,13 @@ class _MPSScreenState extends State<MPSScreen> {
                       label: primaryFee.status == PaymentStatus.paid
                           ? l10n.translate('fee_status_paid')
                           : (primaryFee.status == PaymentStatus.partiallyPaid
-                                ? 'Partially Paid'
-                                : 'Unpaid'),
+                              ? 'Partially Paid'
+                              : 'Unpaid'),
                       variant: primaryFee.status == PaymentStatus.paid
                           ? AppBadgeVariant.success
                           : (primaryFee.status == PaymentStatus.partiallyPaid
-                                ? AppBadgeVariant.info
-                                : AppBadgeVariant.error),
+                              ? AppBadgeVariant.info
+                              : AppBadgeVariant.error),
                     ),
                   ],
                 ),
@@ -1114,9 +1279,7 @@ class _MPSScreenState extends State<MPSScreen> {
     ThemeData theme,
   ) {
     if (_isLoadingTeacher) {
-      return const AppLoadingIndicator(
-        message: 'Loading teacher class assignments...',
-      );
+      return const AppLoadingIndicator(message: 'Loading teacher class assignments...');
     }
 
     if (_teacherError != null) {
@@ -1132,7 +1295,8 @@ class _MPSScreenState extends State<MPSScreen> {
         child: AppEmptyState(
           icon: Icons.assignment_late_outlined,
           title: 'No Active Class Assignments',
-          description: 'You are not currently assigned to any class or subject in Firestore.',
+          description:
+              'You are not currently assigned to any class or subject in Firestore.',
           actionLabel: 'Create Assignment',
           onAction: () => _showCreateAssignmentDialog(),
         ),
@@ -1251,7 +1415,8 @@ class _MPSScreenState extends State<MPSScreen> {
                       Switch(
                         value: isPresent,
                         activeThumbColor: AppColors.success,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        materialTapTargetSize:
+                            MaterialTapTargetSize.shrinkWrap,
                         onChanged: (val) {
                           setState(() {
                             _attendanceMap[student.id] = val;
@@ -1277,9 +1442,7 @@ class _MPSScreenState extends State<MPSScreen> {
     ThemeData theme,
   ) {
     if (_isLoadingPrincipal) {
-      return const AppLoadingIndicator(
-        message: 'Calculating aggregate school metrics...',
-      );
+      return const AppLoadingIndicator(message: 'Calculating aggregate school metrics...');
     }
 
     if (_principalError != null) {
@@ -1298,8 +1461,11 @@ class _MPSScreenState extends State<MPSScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 10,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1321,7 +1487,27 @@ class _MPSScreenState extends State<MPSScreen> {
             ),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: [
+                AppButton.primary(
+                  text: 'Staff Directory',
+                  icon: Icons.manage_accounts,
+                  isCompact: true,
+                  fullWidth: false,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StaffProvisioningScreen(
+                          authRepository: widget.authRepository,
+                          assignmentRepository: _assignmentRepository,
+                          schoolId: _schoolId,
+                          currentPrincipalUid: widget.userProfile.uid,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 AppButton.outlined(
                   text: 'Add Student',
                   icon: Icons.person_add,
@@ -1385,8 +1571,9 @@ class _MPSScreenState extends State<MPSScreen> {
               AppSpacing.gapSm,
               Text(
                 '• Firestore is the single authoritative source of truth\n'
+                '• Phone Authentication + OTP controls all user access\n'
+                '• Administrator Provisions Teacher & Principal accounts\n'
                 '• Scoped CacheManager prevents redundant reads with TTL eviction\n'
-                '• Offline Persistence enabled via Firebase Firestore SDK\n'
                 '• Strict Teacher Assignment boundaries enforced on attendance and marks\n'
                 '• Manual Payment Provider preserves full financial audit trail',
                 style: AppTypography.bodySmall.copyWith(height: 1.6),
@@ -1442,11 +1629,7 @@ class _MPSScreenState extends State<MPSScreen> {
                       color: AppColors.primary,
                       borderRadius: AppRadius.radiusSm,
                     ),
-                    child: const Icon(
-                      Icons.school,
-                      color: Colors.white,
-                      size: 18,
-                    ),
+                    child: const Icon(Icons.school, color: Colors.white, size: 18),
                   ),
                   const SizedBox(width: 10),
                   Text(
@@ -1461,28 +1644,19 @@ class _MPSScreenState extends State<MPSScreen> {
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.dashboard, size: 18),
-              title: Text(
-                l10n.translate('dashboard'),
-                style: AppTypography.bodyMedium,
-              ),
+              title: Text(l10n.translate('dashboard'), style: AppTypography.bodyMedium),
               selected: _selectedNavIndex == 0,
               onTap: () => setState(() => _selectedNavIndex = 0),
             ),
             ListTile(
               leading: const Icon(Icons.how_to_reg, size: 18),
-              title: Text(
-                l10n.translate('attendance'),
-                style: AppTypography.bodyMedium,
-              ),
+              title: Text(l10n.translate('attendance'), style: AppTypography.bodyMedium),
               selected: _selectedNavIndex == 1,
               onTap: () => setState(() => _selectedNavIndex = 1),
             ),
             ListTile(
               leading: const Icon(Icons.receipt_long, size: 18),
-              title: Text(
-                l10n.translate('fees'),
-                style: AppTypography.bodyMedium,
-              ),
+              title: Text(l10n.translate('fees'), style: AppTypography.bodyMedium),
               selected: _selectedNavIndex == 2,
               onTap: () => setState(() => _selectedNavIndex = 2),
             ),

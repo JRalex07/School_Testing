@@ -9,14 +9,17 @@ import '../../domain/repositories/student_repository.dart';
 
 /// Production Firestore implementation for Student management with caching (Rule 3 & 7).
 class FirebaseStudentRepository implements StudentRepository {
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? _customFirestore;
   final CacheManager _cache;
 
   FirebaseStudentRepository({
     FirebaseFirestore? firestore,
     CacheManager? cache,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _customFirestore = firestore,
         _cache = cache ?? CacheManager();
+
+  FirebaseFirestore get _firestore =>
+      _customFirestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _studentsRef =>
       _firestore.collection('students');

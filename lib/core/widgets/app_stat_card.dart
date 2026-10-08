@@ -60,7 +60,10 @@ class AppStatCard extends StatelessWidget {
                   color: isDark ? Colors.white : AppColors.primary,
                 ),
               ),
-              if (badge != null) AppBadge(label: badge!, variant: badgeVariant),
+              if (badge != null)
+                Flexible(
+                  child: AppBadge(label: badge!, variant: badgeVariant),
+                ),
             ],
           ),
           AppSpacing.gapSm,
