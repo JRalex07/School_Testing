@@ -47,9 +47,20 @@ class AuditLogRecord {
       entityType: map['entityType'] as String? ?? '',
       entityId: map['entityId'] as String? ?? '',
       metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
-      timestamp:
-          DateTime.tryParse(map['timestamp'] as String? ?? '') ??
-          DateTime.now(),
+      timestamp: _parseDateTime(map['timestamp']) ?? DateTime.now(),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    try {
+      final dynamic ts = value;
+      if (ts.runtimeType.toString().contains('Timestamp')) {
+        return (ts as dynamic).toDate() as DateTime;
+      }
+    } catch (_) {}
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 }

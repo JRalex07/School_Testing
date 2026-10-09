@@ -43,27 +43,28 @@ class AppCard extends StatelessWidget {
     final cardColor =
         color ?? theme.cardTheme.color ?? theme.colorScheme.surface;
     final isDark = theme.brightness == Brightness.dark;
-    final effectiveRadius = borderRadius ?? AppRadius.radiusMd;
+    final effectiveRadius = borderRadius ?? AppRadius.radiusCard;
     final effectivePadding = padding ?? AppSpacing.cardPaddingCompact;
 
-    // Professional Claymorphism dual-shadow: soft ambient shadow + subtle highlight
+    // Stitch Professional Claymorphism dual-shadow:
+    // Warm magenta-tinted ambient key shadow + pure white top-left rim highlight
     final List<BoxShadow>? clayShadows = hasShadow
         ? [
-            // Ambient soft diffuse shadow
+            // Ambient warm tinted diffuse shadow
             BoxShadow(
-              offset: const Offset(0, 3),
-              blurRadius: 8,
-              spreadRadius: -1,
-              color: Colors.black.withAlpha(isDark ? 50 : 16),
+              offset: const Offset(4, 4),
+              blurRadius: 12,
+              spreadRadius: 0,
+              color: isDark ? Colors.black.withAlpha(70) : AppColors.clayShadow,
             ),
-            // Gentle extruded top-edge highlight
+            // Diffuse extruded top-left rim highlight
             BoxShadow(
-              offset: const Offset(-1, -1),
-              blurRadius: 3,
+              offset: const Offset(-3, -3),
+              blurRadius: 8,
               spreadRadius: 0,
               color: isDark
-                  ? Colors.white.withAlpha(8)
-                  : Colors.white.withAlpha(160),
+                  ? Colors.white.withAlpha(12)
+                  : AppColors.clayInnerLight,
             ),
           ]
         : null;

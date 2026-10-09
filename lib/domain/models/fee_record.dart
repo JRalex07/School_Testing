@@ -120,21 +120,29 @@ class FeeRecord {
       paidAmount: (map['paidAmount'] as num?)?.toDouble() ?? 0.0,
       concessionAmount: (map['concessionAmount'] as num?)?.toDouble() ?? 0.0,
       currency: map['currency'] as String? ?? 'INR',
-      dueDate:
-          DateTime.tryParse(map['dueDate'] as String? ?? '') ?? DateTime.now(),
+      dueDate: _parseDateTime(map['dueDate']) ?? DateTime.now(),
       status: PaymentStatus.fromString(map['status'] as String?),
       lastPaymentMethod: map['lastPaymentMethod'] as String?,
       lastReferenceNumber: map['lastReferenceNumber'] as String?,
-      paidAt: map['paidAt'] != null
-          ? DateTime.tryParse(map['paidAt'] as String)
-          : null,
+      paidAt: _parseDateTime(map['paidAt']),
       receiptNumber: map['receiptNumber'] as String?,
       isServerVerified: map['isServerVerified'] as bool? ?? true,
       auditCreatedBy: map['auditCreatedBy'] as String?,
-      auditCreatedAt: map['auditCreatedAt'] != null
-          ? DateTime.tryParse(map['auditCreatedAt'] as String)
-          : null,
+      auditCreatedAt: _parseDateTime(map['auditCreatedAt']),
       lastAuditNote: map['lastAuditNote'] as String?,
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    try {
+      final dynamic ts = value;
+      if (ts.runtimeType.toString().contains('Timestamp')) {
+        return (ts as dynamic).toDate() as DateTime;
+      }
+    } catch (_) {}
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 }

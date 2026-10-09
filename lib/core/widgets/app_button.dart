@@ -116,10 +116,10 @@ class AppButton extends StatelessWidget {
             backgroundColor: AppColors.primary,
             foregroundColor: AppColors.onPrimary,
             minimumSize: Size(fullWidth ? double.infinity : 40, buttonHeight),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-            elevation: 1.5,
-            shadowColor: AppColors.primary.withAlpha(90),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
+            elevation: 2.0,
+            shadowColor: AppColors.primary.withAlpha(120),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusPill),
           ),
           child: buttonChild,
         );
@@ -129,12 +129,16 @@ class AppButton extends StatelessWidget {
         btn = ElevatedButton(
           onPressed: effectiveOnPressed,
           style: ElevatedButton.styleFrom(
-            backgroundColor: isDark ? AppColors.darkSurfaceSubtle : AppColors.primaryContainer,
-            foregroundColor: isDark ? Colors.white : AppColors.onPrimaryContainer,
+            backgroundColor: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceContainerLow,
+            foregroundColor: isDark ? Colors.white : AppColors.primary,
             minimumSize: Size(fullWidth ? double.infinity : 40, buttonHeight),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
             elevation: 0.5,
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
+            side: BorderSide(
+              color: isDark ? AppColors.darkBorder : AppColors.clayBorder,
+              width: 1,
+            ),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusPill),
           ),
           child: buttonChild,
         );
@@ -146,9 +150,9 @@ class AppButton extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
             minimumSize: Size(fullWidth ? double.infinity : 40, buttonHeight),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
             side: const BorderSide(color: AppColors.primary, width: 1.2),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusPill),
           ),
           child: buttonChild,
         );
@@ -161,10 +165,10 @@ class AppButton extends StatelessWidget {
             backgroundColor: AppColors.error,
             foregroundColor: AppColors.onError,
             minimumSize: Size(fullWidth ? double.infinity : 40, buttonHeight),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
             elevation: 1.5,
             shadowColor: AppColors.error.withAlpha(90),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusPill),
           ),
           child: buttonChild,
         );
@@ -176,8 +180,8 @@ class AppButton extends StatelessWidget {
           style: TextButton.styleFrom(
             foregroundColor: AppColors.primary,
             minimumSize: Size(fullWidth ? double.infinity : 36, buttonHeight),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusSm),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusPill),
           ),
           child: buttonChild,
         );

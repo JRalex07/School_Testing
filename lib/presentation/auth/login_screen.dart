@@ -3,16 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../../core/localization/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
-import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/phone_number_formatter.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_dialog.dart';
-import '../../core/widgets/app_text_field.dart';
 import '../../domain/models/user_profile.dart';
 import '../../domain/repositories/auth_repository.dart';
 
@@ -240,28 +237,48 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(5),
+              width: 32,
+              height: 32,
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: AppRadius.radiusSm,
+                color: AppColors.surfaceContainerLowest,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.clayBorder),
+                boxShadow: const [
+                  BoxShadow(
+                    offset: Offset(2, 2),
+                    blurRadius: 6,
+                    color: AppColors.clayShadow,
+                  ),
+                ],
               ),
-              child: const Icon(Icons.school, color: Colors.white, size: 18),
+              child: Image.asset(
+                'assets/icons/mps_app_icon.png',
+                fit: BoxFit.contain,
+                errorBuilder: (ctx, err, stack) => const Icon(
+                  Icons.school,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
             ),
-            const SizedBox(width: 10),
-            Text(
-              AppConstants.appName,
-              style: AppTypography.titleMedium.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                AppConstants.appName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  letterSpacing: -0.2,
+                ),
               ),
             ),
           ],
@@ -299,188 +316,606 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: AppSpacing.paddingMd,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: AppCard(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // School Badge & Title
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Stitch Concentric Molded Crest Pedestal
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 88,
+                      height: 88,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryContainer,
+                        color: AppColors.surfaceContainerLowest,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            offset: const Offset(4, 4),
+                            blurRadius: 14,
+                            color: AppColors.clayShadow,
+                          ),
+                          const BoxShadow(
+                            offset: Offset(-3, -3),
+                            blurRadius: 10,
+                            color: AppColors.clayInnerLight,
+                          ),
+                        ],
                       ),
-                      child: const Icon(
-                        Icons.verified_user_outlined,
-                        size: 32,
+                      padding: const EdgeInsets.all(8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.clayBorder),
+                        ),
+                        child: Center(
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/icons/mps_app_icon.png',
+                              width: 52,
+                              height: 52,
+                              fit: BoxFit.contain,
+                              errorBuilder: (ctx, err, stack) => const Icon(
+                                Icons.school,
+                                size: 36,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: AppColors.tertiary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              offset: const Offset(0, 2),
+                              blurRadius: 4,
+                              color: Colors.black.withAlpha(40),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.verified,
+                          size: 15,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'MPS',
+                  style: AppTypography.displaySmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Portal Sub-badge with dual micro-shadow
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondaryFixed,
+                    borderRadius: AppRadius.radiusPill,
+                    boxShadow: const [
+                      BoxShadow(
+                        offset: Offset(2, 2),
+                        blurRadius: 6,
+                        color: AppColors.clayShadowSubtle,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.family_restroom,
+                        size: 14,
                         color: AppColors.primary,
                       ),
-                    ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'PARENT PORTAL',
+                        style: AppTypography.labelSmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSecondaryFixedVariant,
+                          letterSpacing: 0.8,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
                   ),
-                  AppSpacing.gapMd,
-                  Text(
-                    'MPS Portal Login',
-                    style: AppTypography.titleLarge.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Phone Number + OTP Verification',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  AppSpacing.gapLg,
+                ),
+                const SizedBox(height: 24),
 
-                  // Error Banner
-                  if (_errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.errorContainer,
-                        borderRadius: AppRadius.radiusSm,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 18,
-                            color: AppColors.error,
+                // Main Interactive Form Card
+                AppCard(
+                  borderRadius: const BorderRadius.all(Radius.circular(24)),
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Error Banner
+                      if (_errorMessage != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.onErrorContainer,
+                          decoration: BoxDecoration(
+                            color: AppColors.errorContainer,
+                            borderRadius: AppRadius.radiusMd,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 18,
+                                color: AppColors.error,
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    AppSpacing.gapMd,
-                  ],
-
-                  // Step 1: Phone input
-                  if (!_isOtpSent) ...[
-                    AppTextField(
-                      label: l10n.translate('phone_number'),
-                      hint: '10-digit mobile number',
-                      controller: _phoneController,
-                      prefixText: '+91 ',
-                      keyboardType: TextInputType.phone,
-                      maxLength: 10,
-                      enabled: !_isLoading,
-                    ),
-                    AppSpacing.gapLg,
-                    AppButton.primary(
-                      text: _isLoading ? 'Sending OTP...' : 'Send OTP',
-                      icon: Icons.sms_outlined,
-                      onPressed: _isLoading ? null : _sendOtp,
-                    ),
-                  ]
-                  // Step 2: OTP verification
-                  else ...[
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: AppRadius.radiusSm,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.phone_android,
-                            size: 18,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'OTP sent to ${PhoneNumberFormatter.mask(_normalizedPhone)}',
-                              style: AppTypography.bodySmall.copyWith(
-                                fontWeight: FontWeight.w600,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.onErrorContainer,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                          TextButton(
-                            onPressed: _isLoading ? null : _resetPhoneInput,
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(50, 30),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Change',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    AppSpacing.gapMd,
-                    AppTextField(
-                      label: 'Enter 6-Digit OTP',
-                      hint: '• • • • • •',
-                      controller: _otpController,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      enabled: !_isLoading,
-                    ),
-                    AppSpacing.gapMd,
-                    AppButton.primary(
-                      text: _isLoading ? 'Verifying OTP...' : 'Verify OTP',
-                      icon: Icons.login,
-                      onPressed: _isLoading ? null : _verifyOtp,
-                    ),
-                    AppSpacing.gapSm,
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (_resendCountdown > 0)
-                          Text(
-                            'Resend OTP in ${_resendCountdown}s',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: theme.colorScheme.onSurface.withAlpha(140),
-                            ),
-                          )
-                        else
-                          TextButton.icon(
-                            icon: const Icon(Icons.refresh, size: 14),
-                            label: const Text(
-                              'Resend OTP',
-                              style: TextStyle(fontSize: 13),
-                            ),
-                            onPressed: _isLoading ? null : _sendOtp,
-                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
-                    ),
-                  ],
 
-                  AppSpacing.gapMd,
-                  Text(
-                    'School Management Portal • Authorized Personnel Only',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(120),
-                      fontSize: 10,
-                    ),
-                    textAlign: TextAlign.center,
+                      // State 1: Mobile Entry Module
+                      if (!_isOtpSent) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Parent Login',
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceContainerHigh,
+                                borderRadius: AppRadius.radiusPill,
+                              ),
+                              child: Text(
+                                'Step 1 of 2',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.lightTextSecondary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Enter your registered mobile number to receive a one-time verification code',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.lightTextSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Sunken Input Container
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'MOBILE NUMBER',
+                              style: AppTypography.labelSmall.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                                color: AppColors.lightTextSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: AppColors.clayBorder),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              child: Row(
+                                children: [
+                                  // Country Code Pill
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surfaceContainerLowest,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: AppColors.clayBorder,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text(
+                                          '🇮🇳 ',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                        Text(
+                                          '+91',
+                                          style: AppTypography.labelMedium
+                                              .copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(
+                                          Icons.lock_outline,
+                                          size: 12,
+                                          color: AppColors.lightTextMuted,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    height: 22,
+                                    width: 1,
+                                    color: AppColors.clayBorder,
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.smartphone,
+                                    size: 18,
+                                    color: AppColors.lightTextSecondary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _phoneController,
+                                      keyboardType: TextInputType.phone,
+                                      maxLength: 10,
+                                      enabled: !_isLoading,
+                                      style: AppTypography.bodyLarge.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.5,
+                                      ),
+                                      decoration: InputDecoration(
+                                        counterText: '',
+                                        hintText: '98765 43210',
+                                        hintStyle: AppTypography.bodyLarge
+                                            .copyWith(
+                                              color: AppColors.lightTextMuted
+                                                  .withAlpha(150),
+                                            ),
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        filled: false,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                      onSubmitted: (_) {
+                                        if (!_isLoading) _sendOtp();
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Primary Pill CTA
+                        AppButton.primary(
+                          text: _isLoading ? 'Sending OTP...' : 'Send OTP',
+                          icon: Icons.arrow_forward,
+                          onPressed: _isLoading ? null : _sendOtp,
+                        ),
+                      ]
+                      // State 2: OTP Verification Module
+                      else ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Verification Code',
+                                      style: AppTypography.titleMedium.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.secondaryFixed,
+                                        borderRadius: AppRadius.radiusPill,
+                                      ),
+                                      child: Text(
+                                        'Active',
+                                        style: AppTypography.labelSmall
+                                            .copyWith(
+                                              color: AppColors
+                                                  .onSecondaryFixedVariant,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 10,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Sent to +91 ${_normalizedPhone.length >= 10 ? _normalizedPhone.substring(_normalizedPhone.length - 10) : _normalizedPhone}',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.lightTextSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            InkWell(
+                              onTap: _isLoading ? null : _resetPhoneInput,
+                              borderRadius: AppRadius.radiusPill,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceContainerLow,
+                                  borderRadius: AppRadius.radiusPill,
+                                  border: Border.all(
+                                    color: AppColors.clayBorder,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.edit,
+                                      size: 13,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Edit',
+                                      style: AppTypography.labelSmall.copyWith(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+
+                        // 6 Rounded Clay Digit Cells
+                        Stack(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: List.generate(6, (index) {
+                                final text = _otpController.text;
+                                final hasChar = index < text.length;
+                                final isCurrent = index == text.length;
+                                final char = hasChar ? text[index] : '';
+
+                                return Container(
+                                  width: 44,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    color: isCurrent
+                                        ? AppColors.surfaceContainer
+                                        : AppColors.surfaceContainerLow,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isCurrent
+                                          ? AppColors.primary
+                                          : AppColors.clayBorder,
+                                      width: isCurrent ? 1.8 : 1.0,
+                                    ),
+                                    boxShadow: [
+                                      if (isCurrent)
+                                        BoxShadow(
+                                          offset: const Offset(0, 2),
+                                          blurRadius: 6,
+                                          color: AppColors.primary.withAlpha(
+                                            50,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    hasChar ? char : (isCurrent ? '•' : '•'),
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      color: hasChar
+                                          ? AppColors.lightTextPrimary
+                                          : (isCurrent
+                                                ? AppColors.primary
+                                                : AppColors.lightTextMuted
+                                                      .withAlpha(100)),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                            // Invisible text field overlay for smooth native keyboard
+                            Positioned.fill(
+                              child: Opacity(
+                                opacity: 0.0,
+                                child: TextField(
+                                  controller: _otpController,
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 6,
+                                  autofocus: true,
+                                  enabled: !_isLoading,
+                                  decoration: const InputDecoration(
+                                    counterText: '',
+                                  ),
+                                  onChanged: (val) {
+                                    setState(() {});
+                                    if (val.length == 6) {
+                                      _verifyOtp();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Timer & Resend Toolbar
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.history,
+                                  size: 15,
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _resendCountdown > 0
+                                      ? 'Resend code in 00:${_resendCountdown.toString().padLeft(2, '0')}'
+                                      : 'Didn\'t receive code?',
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: AppColors.lightTextSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_resendCountdown == 0)
+                              InkWell(
+                                onTap: _isLoading ? null : _sendOtp,
+                                child: Text(
+                                  'Resend OTP',
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w700,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Verify Pill CTA
+                        AppButton.primary(
+                          text: _isLoading
+                              ? 'Verifying...'
+                              : 'Verify & Continue',
+                          icon: Icons.verified_user,
+                          onPressed: _isLoading ? null : _verifyOtp,
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ),
+                ),
+
+                const SizedBox(height: 16),
+                // Security Reassurance Card
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.clayBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.tertiaryFixed,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.lock,
+                          size: 16,
+                          color: AppColors.onTertiaryFixed,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '256-BIT SSL PROTECTION',
+                              style: AppTypography.labelSmall.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.6,
+                                color: AppColors.tertiary,
+                              ),
+                            ),
+                            Text(
+                              'Encrypted & secure verification backed by MPS Portal',
+                              style: AppTypography.bodySmall.copyWith(
+                                fontSize: 11,
+                                color: AppColors.lightTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),

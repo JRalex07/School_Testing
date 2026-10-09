@@ -47,9 +47,20 @@ class TeacherAssignment {
       subjectId: map['subjectId'] as String?,
       isClassTeacher: map['isClassTeacher'] as bool? ?? false,
       isActive: map['isActive'] as bool? ?? true,
-      assignedAt:
-          DateTime.tryParse(map['assignedAt'] as String? ?? '') ??
-          DateTime.now(),
+      assignedAt: _parseDateTime(map['assignedAt']) ?? DateTime.now(),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    try {
+      final dynamic ts = value;
+      if (ts.runtimeType.toString().contains('Timestamp')) {
+        return (ts as dynamic).toDate() as DateTime;
+      }
+    } catch (_) {}
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 }

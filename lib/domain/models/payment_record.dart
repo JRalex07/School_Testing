@@ -69,16 +69,26 @@ class PaymentRecord {
       paymentMethod: PaymentMethod.fromString(map['paymentMethod'] as String?),
       referenceNumber: map['referenceNumber'] as String?,
       receiptNumber: map['receiptNumber'] as String? ?? '',
-      paidAt:
-          DateTime.tryParse(map['paidAt'] as String? ?? '') ?? DateTime.now(),
+      paidAt: _parseDateTime(map['paidAt']) ?? DateTime.now(),
       recordedByUserId: map['recordedByUserId'] as String? ?? '',
       notes: map['notes'] as String?,
       isReversed: map['isReversed'] as bool? ?? false,
       reversalReason: map['reversalReason'] as String?,
       reversedByUserId: map['reversedByUserId'] as String?,
-      reversedAt: map['reversedAt'] != null
-          ? DateTime.tryParse(map['reversedAt'] as String)
-          : null,
+      reversedAt: _parseDateTime(map['reversedAt']),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    try {
+      final dynamic ts = value;
+      if (ts.runtimeType.toString().contains('Timestamp')) {
+        return (ts as dynamic).toDate() as DateTime;
+      }
+    } catch (_) {}
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 }

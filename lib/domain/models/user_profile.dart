@@ -50,14 +50,27 @@ class UserProfile {
       isActive: map['isActive'] as bool? ?? true,
       schoolId: map['schoolId'] as String? ?? 'mps_main',
       staffId: map['staffId'] as String?,
-      createdAt:
-          DateTime.tryParse(map['createdAt'] as String? ?? '') ??
-          DateTime.now(),
-      lastLoginAt: map['lastLoginAt'] != null
-          ? DateTime.tryParse(map['lastLoginAt'] as String)
-          : null,
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+      lastLoginAt: _parseDateTime(map['lastLoginAt']),
       metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
     );
+  }
+
+  /// Safely parses a date field that may be a Firestore [Timestamp],
+  /// an ISO-8601 [String], or null.
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    // Firestore SDK returns cloud_firestore.Timestamp for serverTimestamp() fields.
+    // Using duck-typing (toDate) so we don't need to import cloud_firestore here.
+    if (value is DateTime) return value;
+    try {
+      final dynamic ts = value;
+      if (ts.runtimeType.toString().contains('Timestamp')) {
+        return (ts as dynamic).toDate() as DateTime;
+      }
+    } catch (_) {}
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
   UserProfile copyWith({

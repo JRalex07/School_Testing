@@ -71,15 +71,26 @@ class AttendanceRecord {
       studentName: map['studentName'] as String? ?? '',
       classId: map['classId'] as String? ?? '',
       section: map['section'] as String? ?? '',
-      date: DateTime.tryParse(map['date'] as String? ?? '') ?? DateTime.now(),
+      date: _parseDateTime(map['date']) ?? DateTime.now(),
       status: AttendanceStatus.fromString(map['status'] as String?),
       markedByUserId: map['markedByUserId'] as String? ?? '',
-      markedAt: DateTime.tryParse(map['markedAt'] as String? ?? '') ?? DateTime.now(),
+      markedAt: _parseDateTime(map['markedAt']) ?? DateTime.now(),
       lastChangedByUserId: map['lastChangedByUserId'] as String?,
-      lastChangedAt: map['lastChangedAt'] != null
-          ? DateTime.tryParse(map['lastChangedAt'] as String)
-          : null,
+      lastChangedAt: _parseDateTime(map['lastChangedAt']),
       remark: map['remark'] as String?,
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    try {
+      final dynamic ts = value;
+      if (ts.runtimeType.toString().contains('Timestamp')) {
+        return (ts as dynamic).toDate() as DateTime;
+      }
+    } catch (_) {}
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 }

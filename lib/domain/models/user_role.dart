@@ -28,7 +28,8 @@ enum UserRole {
       this == UserRole.feeClerk;
 
   /// Whether this role is an academic instructor authorized for class attendance.
-  bool get isTeacher => this == UserRole.teacher || this == UserRole.vicePrincipal;
+  bool get isTeacher =>
+      this == UserRole.teacher || this == UserRole.vicePrincipal;
 
   /// Whether this role is a parent/guardian.
   bool get isParent => this == UserRole.parent;
